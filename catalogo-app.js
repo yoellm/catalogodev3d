@@ -230,13 +230,22 @@
         card.id = 'producto-' + id; card.tabIndex = -1;
         const url = safeUrl(p.imagen);
         if (url) { const image = el('img'); image.src = url; image.alt = p.nombre; image.loading = 'lazy'; image.onerror = () => photo.replaceChildren(el('span','3D')); photo.replaceChildren(image); }
-        body.append(el('span',p.categoria || 'Impresión 3D','tag'),el('h2',p.nombre),el('p',p.descripcion || '', 'description'));
-        if(!shopView&&!checkingShop)body.append(el('p',money(p.precio),'price'),el('small','Precio de venta al público'));
+        const title=el('h2',p.nombre);title.title=p.nombre;
+        const preview=el('p',String(p.descripcion||'').replace(/\s+/g,' ').trim(),'description'),details=el('button','Ver detalles','product-details-link'),pricing=el('div',undefined,'catalog-pricing');
+        details.type='button';details.setAttribute('aria-label','Ver detalles de '+p.nombre);
+        details.onclick=()=>{
+          $('catalogDetailTitle').textContent=p.nombre;$('catalogDetailDescription').textContent=p.descripcion||'Este producto todavía no tiene una descripción.';
+          $('catalogDetailPhoto').replaceChildren();$('catalogDetailPhoto').hidden=!url;
+          if(url){const image=el('img');image.src=url;image.alt=p.nombre;$('catalogDetailPhoto').append(image);}
+          $('catalogDetailDialog').showModal();$('catalogDetailDialog').scrollTop=0;document.body.classList?.add('catalog-detail-open');
+        };
+        body.append(el('span',p.categoria || 'Impresión 3D','tag'),title,preview,details,pricing);
+        if(!shopView&&!checkingShop)pricing.append(el('p',money(p.precio),'price'),el('small','Precio de venta al público'));
         if(validTrade(wholesale[id])){
           const trade=wholesale[id],total=Math.round(trade.precio*100)*trade.minimo/100,box=el('div',undefined,'wholesale');
           box.append(el('strong',money(trade.precio)+' / unidad','wholesale-unit'),el('p','Pedido mínimo: '+trade.minimo+(trade.minimo===1?' unidad':' unidades'),'wholesale-minimum'),el('span','Total del pedido mínimo','wholesale-total-label'),el('strong',money(total),'wholesale-total'));
-          body.append(box);
-        }else if(shopView||checkingShop)body.append(el('p',checkingShop?'Comprobando tus condiciones…':'Precio mayorista pendiente de configurar. Consúltanos para este producto.','wholesale-pending'));
+          pricing.append(box);
+        }else if(shopView||checkingShop)pricing.append(el('p',checkingShop?'Comprobando tus condiciones…':'Precio mayorista pendiente de configurar. Consúltanos para este producto.','wholesale-pending'));
         card.append(photo,body); $('grid').append(card);
       });
       status(items.length ? `${items.length} productos` : 'No hay productos para mostrar.');
@@ -334,7 +343,11 @@
         finally{button.disabled=false;}
       };
     }
-    if (catalogPage) ['search','category','sort'].forEach(id => $(id).addEventListener('input', render));
+    if (catalogPage) {
+      ['search','category','sort'].forEach(id => $(id).addEventListener('input', render));
+      $('closeCatalogDetail').onclick=()=>$('catalogDetailDialog').close();
+      $('catalogDetailDialog').onclose=()=>document.body.classList?.remove('catalog-detail-open');
+    }
     if (adminPage) {
       function showCalculator(open) { showAdminView(open ? 'calculator' : 'catalog'); }
       $('goCatalog').onclick = () => showAdminView('catalog');
