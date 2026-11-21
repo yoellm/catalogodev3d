@@ -52,3 +52,12 @@ El target de Hosting es independiente para no sobrescribir el sitio del inventar
 ## Verificar tras publicar
 
 Administrador: crear, editar y eliminar productos, subir imágenes y autorizar tiendas. Anónimo: ver solo PVP y tener denegada la lectura mayorista. Tienda activa: ver PVP, mayorista y mínimo, sin permiso de escritura. Tienda desactivada: solo PVP. Comprobar que ninguna operación altera productos ni stock del inventario. No se han realizado pruebas con usuarios reales ni publicado reglas.
+
+
+## Calculadora integrada
+
+En admin.html, inicia sesión como administrador y pulsa Calculadora de costes y precios. La copia integrada está en calculadora/; conserva cálculo manual, lectura de G-code/3MF, precios para tiendas y precio cerrado con colchón. Los archivos se procesan en el navegador. Los ajustes de esta copia se guardan en dev3d-catalogo-costes-v1, de forma independiente de la calculadora original. No se migran automáticamente los ajustes de otro dominio.
+
+Preparar producto en catálogo devuelve un borrador al formulario: nombre, PVP, precio mayorista y mínimo, con IVA según lo configurado en la calculadora. En venta a tienda se usa el PVP evaluado y en directa el precio directo; el mayorista se calcula con los ajustes para tiendas. Revisa precios, impuestos, categoría y fotografía y pulsa Guardar producto para publicarlo. No se guardan costes ni beneficios internos en las ramas públicas. El mínimo no aplica descuento unitario.
+
+La calculadora se carga dentro del panel únicamente tras verificar el administrador. El HTML y JavaScript estáticos son públicos en GitHub Pages; no contienen datos privados del negocio. El control de escritura de productos y lectura de tarifas depende de las reglas Firebase.

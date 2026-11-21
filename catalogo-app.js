@@ -15,7 +15,11 @@
     const app = appSDK.initializeApp(window.CATALOGO_CONFIG.firebaseConfig, 'dev3d-catalog');
     const db = database.getDatabase(app, databaseURL), auth = authentication.getAuth(app), storage = storageSDK.getStorage(app);
     const path = name => database.ref(db, name);
-    const watch = (name, callback) => { subscriptions.push(database.onValue(path(name), snap => callback(snap.val() || {}), () => status('No se pudieron cargar los datos. Comprueba la conexión y las reglas de acceso del catálogo.'))); };
+    const watch = (name, callback) => { subscriptions.push(database.onValue(path(name), snap => callback(snap.val() || {}), error => {
+      const denied = String(error?.code || error?.message || '').toLowerCase().replaceAll('_','-').includes('permission-denied');
+      if (adminPage && admin && denied) $('rulesNotice').hidden = false;
+      status(adminPage ? 'No se pudieron cargar los datos. Comprueba la conexión y las reglas de acceso del catálogo.' : 'El catálogo no está disponible en este momento. Inténtalo de nuevo más tarde.');
+    })); };
     function resetSubscriptions() { subscriptions.forEach(stop => stop()); subscriptions = []; }
     $('loginOpen').onclick = () => $('loginDialog').showModal();
     $('loginClose').onclick = () => $('loginDialog').close();
@@ -62,6 +66,30 @@
     }
     if (!adminPage) ['search','category','sort'].forEach(id => $(id).addEventListener('input', render));
     if (adminPage) {
+      function showCalculator(open) {
+        if (!admin) return;
+        $('calculatorPanel').hidden = !open;
+        $('productWorkspace').hidden = open;
+        $('closeCalculator').hidden = !open;
+        $('openCalculator').hidden = open;
+        if (open && !$('calculatorFrame').getAttribute('src')) $('calculatorFrame').src = 'calculadora/index.html?v=1';
+      }
+      $('openCalculator').onclick = () => showCalculator(true);
+      $('closeCalculator').onclick = () => showCalculator(false);
+      window.addEventListener('message', event => {
+        if (!admin || event.origin !== location.origin || event.source !== $('calculatorFrame').contentWindow) return;
+        const draft = window.CATALOGO_DRAFT.validateDraft(event.data);
+        if (!draft) return;
+        const form = $('productForm');
+        if ((form.elements.id.value || form.elements.nombre.value.trim()) && !confirm('Hay un producto en edición. ¿Sustituir el formulario por un nuevo borrador de la calculadora?')) return;
+        form.reset();
+        form.elements.id.value = '';
+        for (const [key,value] of Object.entries(draft)) form.elements[key].value = value;
+        $('formTitle').textContent = 'Nuevo producto desde la calculadora';
+        showCalculator(false);
+        status('Precios y mínimo preparados. Añade la foto y la categoría, revisa los datos y pulsa Guardar producto para publicarlo.');
+        form.scrollIntoView({behavior:'smooth'});
+      });
       $('resetProduct').onclick = () => { $('productForm').reset(); $('formTitle').textContent = 'Nuevo producto'; };
       $('productForm').onsubmit = async event => {
         event.preventDefault(); if (!admin) return;
@@ -84,7 +112,10 @@
       const version = ++generation; resetSubscriptions(); currentUser = user; wholesale = {}; publicProducts = {}; shops = {}; admin = !!user && window.CATALOGO_CONFIG.ADMIN_EMAILS.includes(user.email?.toLowerCase());
       $('identity').textContent = user ? 'Sesión iniciada' : 'Catálogo público'; $('logout').hidden = !user; $('loginOpen').hidden = !!user;
       if ($('adminLink')) $('adminLink').hidden = !admin;
-      if (adminPage) { $('adminPanel').hidden = !admin; $('adminProducts').replaceChildren(); $('shops').replaceChildren(); $('productForm').reset(); status(admin ? 'Gestión privada del catálogo.' : 'Acceso exclusivo para administradores.'); if (!admin) return; }
+      if (adminPage) {
+        $('rulesNotice').hidden = true;
+        if (!admin) { $('calculatorFrame').removeAttribute('src'); $('calculatorPanel').hidden = true; $('productWorkspace').hidden = false; $('closeCalculator').hidden = true; $('openCalculator').hidden = false; }
+        $('adminPanel').hidden = !admin; $('adminProducts').replaceChildren(); $('shops').replaceChildren(); $('productForm').reset(); status(admin ? 'Gestión privada del catálogo.' : 'Acceso exclusivo para administradores.'); if (!admin) return; }
       else { $('grid').replaceChildren(); $('mode').textContent = 'Precios de venta al público.'; }
       watch('dev3dCatalogoPublico', value => { publicProducts = value; render(); });
       const listenWholesale = () => watch('dev3dCatalogoMayorista', value => { wholesale = value; render(); });

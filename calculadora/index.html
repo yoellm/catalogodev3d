@@ -1,0 +1,425 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Calculadora de costes para impresión 3D con entrada manual y análisis de archivos G-code.">
+  <title>Calculadora privada · DEV3D Studio</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <a class="brand" href="#" aria-label="Coste3D, inicio">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 42 42" role="img">
+            <path d="M21 4 35.5 12.4v17.2L21 38 6.5 29.6V12.4L21 4Z"/>
+            <path d="m7.5 12.8 13.5 8 13.5-8M21 21v16"/>
+            <path d="m14.2 16.8 13.6-8"/>
+          </svg>
+        </span>
+        <span>DEV<span>3D</span> · Costes</span>
+      </a>
+      <div class="topbar-actions">
+        <span class="autosave-status"><i></i> Guardado automático</span>
+        <button class="button button-ghost" id="resetButton" type="button">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8m0-5v5h5"/></svg>
+          Reiniciar
+        </button>
+        <button class="button button-dark" id="printButton" type="button">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9V3h12v6M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M6 14h12v7H6z"/></svg>
+          Presupuesto
+        </button>
+      </div>
+    </header>
+
+    <main>
+      <section class="hero">
+        <div>
+          <p class="eyebrow">Calculadora de producción</p>
+          <h1>¿Cuánto cuesta realmente<br>tu pieza impresa en 3D?</h1>
+          <p class="hero-copy">Calcula material, energía, trabajo y desgaste de máquina. Añade el margen y obtén un precio de venta sostenible.</p>
+        </div>
+        <div class="hero-figure" aria-hidden="true">
+          <div class="layer layer-1"></div>
+          <div class="layer layer-2"></div>
+          <div class="layer layer-3"></div>
+          <div class="cube">
+            <span class="cube-top"></span>
+            <span class="cube-left"></span>
+            <span class="cube-right"></span>
+          </div>
+        </div>
+      </section>
+
+      <section class="mode-panel" aria-label="Método de entrada">
+        <div class="mode-copy">
+          <span class="step-number">01</span>
+          <div>
+            <h2>Datos de impresión</h2>
+            <p>Introduce los datos a mano o deja que leamos tu archivo.</p>
+          </div>
+        </div>
+        <div class="segmented" role="tablist" aria-label="Modo de entrada">
+          <button class="segment active" id="manualTab" type="button" role="tab" aria-selected="true" aria-controls="manualPanel">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4l11-11-4-4L4 16v4Zm9-13 4 4M14 6l2-2a1.5 1.5 0 0 1 2 0l2 2a1.5 1.5 0 0 1 0 2l-2 2"/></svg>
+            Entrada manual
+          </button>
+          <button class="segment" id="gcodeTab" type="button" role="tab" aria-selected="false" aria-controls="gcodePanel">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Zm0 0v6h6M8 13h8M8 17h6"/></svg>
+            Subir G-code
+          </button>
+        </div>
+      </section>
+
+      <div class="workspace">
+        <form class="inputs-column" id="costForm">
+          <section class="card input-card" id="manualPanel" role="tabpanel" aria-labelledby="manualTab">
+            <div class="card-heading">
+              <div>
+                <span class="section-kicker">ARCHIVO E IMPRESIÓN</span>
+                <h3>Datos principales</h3>
+              </div>
+              <span class="card-icon blue">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 17h16v4H4zM6 3h12v9H6zM8 12v5m8-5v5M9 7h6"/></svg>
+              </span>
+            </div>
+            <div class="form-grid">
+              <label class="field span-2">
+                <span>Archivo / nombre del trabajo</span>
+                <input id="pieceName" type="text" value="Mi pieza 3D" maxlength="80">
+              </label>
+              <label class="field">
+                <span>Impresora</span>
+                <input id="printerName" type="text" value="Mi impresora" maxlength="60">
+              </label>
+              <label class="field">
+                <span>N.º de unidades</span>
+                <div class="input-suffix"><input id="quantity" type="number" value="1" min="1" max="100000" step="1"><b>uds.</b></div>
+              </label>
+              <label class="field span-2">
+                <span>Tiempo de impresión del trabajo completo</span>
+                <div class="time-inputs">
+                  <div class="input-suffix"><input id="printDays" type="number" value="1" min="0" step="1"><b>días</b></div>
+                  <div class="input-suffix"><input id="printHours" type="number" value="6" min="0" max="23" step="1"><b>h</b></div>
+                  <div class="input-suffix"><input id="printMinutes" type="number" value="0" min="0" max="59" step="1"><b>min</b></div>
+                  <div class="input-suffix"><input id="printSeconds" type="number" value="0" min="0" max="59" step="1"><b>s</b></div>
+                </div>
+              </label>
+            </div>
+          </section>
+
+          <section class="card input-card hidden" id="gcodePanel" role="tabpanel" aria-labelledby="gcodeTab">
+            <div class="card-heading">
+              <div>
+                <span class="section-kicker">ANÁLISIS AUTOMÁTICO</span>
+                <h3>Archivo G-code</h3>
+              </div>
+              <span class="card-icon blue">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4m0 0L7 9m5-5 5 5M5 14v5a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-5"/></svg>
+              </span>
+            </div>
+            <input id="gcodeInput" type="file" accept=".gcode.3mf,.3mf,.gcode,.gco,.gc,.txt" hidden>
+            <button class="dropzone" id="dropzone" type="button">
+              <span class="upload-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4m0 0L7 9m5-5 5 5M5 14v5a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-5"/></svg></span>
+              <strong>Arrastra tu G-code aquí</strong>
+              <span>o haz clic para seleccionarlo</span>
+              <small>.gcode.3mf, .3mf o G-code suelto · se procesa solo en tu navegador</small>
+            </button>
+            <div class="file-result hidden" id="fileResult" aria-live="polite">
+              <div class="file-meta">
+                <span class="file-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Zm0 0v6h6"/></svg></span>
+                <div><strong id="fileName">pieza.gcode</strong><span id="fileSize">—</span></div>
+                <button id="removeFile" type="button" aria-label="Quitar archivo"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button>
+              </div>
+              <div class="analysis-status" id="analysisStatus"><span class="spinner"></span><span>Analizando el archivo…</span></div>
+              <div class="detected-grid hidden" id="detectedGrid">
+                <div><span>Placas detectadas</span><strong id="detectedPlates">—</strong></div>
+                <div><span>Tiempo detectado</span><strong id="detectedTime">—</strong></div>
+                <div><span>Material detectado</span><strong id="detectedMaterial">—</strong></div>
+                <div><span>Origen del dato</span><strong id="detectedSource">—</strong></div>
+              </div>
+              <p class="analysis-note hidden" id="analysisNote"></p>
+            </div>
+            <div class="gcode-time-editor hidden" id="gcodeTimeEditor">
+              <div class="gcode-time-heading">
+                <div>
+                  <strong>Tiempo utilizado para el cálculo</strong>
+                  <small>Se rellena desde el G-code, pero puedes corregirlo manualmente.</small>
+                </div>
+                <span>EDITABLE</span>
+              </div>
+              <div class="time-inputs">
+                <div class="input-suffix"><input id="gcodePrintDays" type="number" value="1" min="0" step="1" aria-label="Días de impresión"><b>días</b></div>
+                <div class="input-suffix"><input id="gcodePrintHours" type="number" value="6" min="0" max="23" step="1" aria-label="Horas de impresión"><b>h</b></div>
+                <div class="input-suffix"><input id="gcodePrintMinutes" type="number" value="0" min="0" max="59" step="1" aria-label="Minutos de impresión"><b>min</b></div>
+                <div class="input-suffix"><input id="gcodePrintSeconds" type="number" value="0" min="0" max="59" step="1" aria-label="Segundos de impresión"><b>s</b></div>
+              </div>
+            </div>
+            <div class="gcode-options">
+              <label class="field span-2"><span>Nombre del trabajo</span><input id="gcodePieceName" type="text" value="Mi pieza 3D" maxlength="80"></label>
+              <label class="field"><span>Impresora</span><input id="gcodePrinterName" type="text" value="Mi impresora" maxlength="60"></label>
+              <label class="field"><span>Unidades</span><div class="input-suffix"><input id="gcodeQuantity" type="number" value="1" min="1" step="1"><b>uds.</b></div></label>
+              <label class="field"><span>Tipo de material</span>
+                <select id="gcodeMaterialType">
+                  <option value="1.24" data-material="PLA">PLA · 1,24 g/cm³</option>
+                  <option value="1.27" data-material="PETG">PETG · 1,27 g/cm³</option>
+                  <option value="1.04" data-material="ABS">ABS · 1,04 g/cm³</option>
+                  <option value="1.07" data-material="ASA">ASA · 1,07 g/cm³</option>
+                  <option value="1.21" data-material="TPU">TPU · 1,21 g/cm³</option>
+                  <option value="1.14" data-material="Nylon / PA">Nylon / PA · 1,14 g/cm³</option>
+                  <option value="1.20" data-material="PC">PC · 1,20 g/cm³</option>
+                </select>
+              </label>
+              <label class="field"><span>Marca</span><input id="gcodeBrand" type="text" value="" placeholder="Ej. ELEGOO"></label>
+              <label class="field"><span>Precio del filamento</span><div class="input-suffix"><input id="gcodeMaterialPrice" type="number" value="19" min="0" step="0.01"><b>€/kg</b></div></label>
+              <label class="field"><span>Factor de error</span><input id="gcodeErrorFactor" type="number" value="1.05" min="1" step="0.01"></label>
+              <label class="field"><span>Diámetro del filamento</span><div class="input-suffix"><input id="filamentDiameter" type="number" value="1.75" min="0.5" max="4" step="0.01"><b>mm</b></div></label>
+            </div>
+          </section>
+
+          <section class="card input-card">
+            <div class="card-heading">
+              <div>
+                <span class="section-kicker">COSTE DE MATERIAL</span>
+                <h3>Filamentos utilizados</h3>
+              </div>
+              <button class="button button-ghost compact-button" id="addMaterialButton" type="button">+ Añadir material</button>
+            </div>
+            <div class="material-table-head" aria-hidden="true">
+              <span>Material y marca</span><span>Configuración</span><span>Cantidad usada</span><span>Coste</span>
+            </div>
+            <div class="material-rows" id="materialRows"></div>
+            <div class="material-cost-summary">
+              <div class="material-total-card">
+                <div><span>Coste de material sin IVA</span><small>Importe utilizado en el presupuesto</small></div>
+                <strong id="materialTotalPreview">0,00 €</strong>
+              </div>
+              <div class="material-total-card material-total-gross">
+                <div><span>Coste de material con IVA</span><small id="materialGrossHint">Referencia para comparar con el slicer</small></div>
+                <strong id="materialGrossTotalPreview">0,00 €</strong>
+              </div>
+            </div>
+          </section>
+
+          <section class="card input-card">
+            <div class="card-heading">
+              <div><span class="section-kicker">COSTE DE ELECTRICIDAD</span><h3>Consumo de la impresora</h3></div>
+              <span class="card-icon yellow"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m13 2-8 12h7l-1 8 8-12h-7l1-8Z"/></svg></span>
+            </div>
+            <div class="form-grid">
+              <label class="field"><span>Potencia media</span><div class="input-suffix"><input id="printerPowerKw" type="number" value="0.4" min="0" step="0.01"><b>kW</b></div></label>
+              <label class="field"><span>Coste de electricidad</span><div class="input-suffix"><input id="electricityPrice" type="number" value="0.17" min="0" step="0.01"><b>€/kWh</b></div></label>
+            </div>
+            <div class="electricity-metrics">
+              <div>
+                <span>TIEMPO DE IMPRESIÓN</span>
+                <strong id="electricityDurationPreview">—</strong>
+              </div>
+              <div>
+                <span>CONSUMO ESTIMADO</span>
+                <strong id="electricityKwhPreview">0 kWh</strong>
+              </div>
+            </div>
+            <div class="formula-preview"><span>Horas × kW × coste kWh</span><strong id="electricityTotalPreview">0,00 €</strong></div>
+          </section>
+
+          <section class="card input-card">
+            <div class="card-heading">
+              <div><span class="section-kicker">COSTE DE OPERARIOS</span><h3>Mano de obra</h3></div>
+              <span class="card-icon blue"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm7-3h6m-3-3v6"/></svg></span>
+            </div>
+            <div class="labor-grid">
+              <label class="field"><span>N.º de operarios</span><input id="operatorCount" type="number" value="1" min="0" step="1"></label>
+              <label class="field">
+                <span>Tiempo de trabajo por operario</span>
+                <div class="labor-time-inputs">
+                  <div class="input-suffix"><input id="laborHours" type="number" value="0" min="0" step="1"><b>h</b></div>
+                  <div class="input-suffix"><input id="laborMinutes" type="number" value="16" min="0" max="59" step="1"><b>min</b></div>
+                  <div class="input-suffix"><input id="laborSeconds" type="number" value="48" min="0" max="59" step="1"><b>s</b></div>
+                </div>
+              </label>
+              <label class="field"><span>Precio por hora</span><div class="input-suffix"><input id="laborRate" type="number" value="15" min="0" step="0.5"><b>€/h</b></div></label>
+            </div>
+            <div class="formula-preview"><span><b id="laborDurationPreview">—</b> por operario × n.º operarios × precio/hora</span><strong id="laborTotalPreview">0,00 €</strong></div>
+          </section>
+
+          <section class="card input-card">
+            <div class="card-heading">
+              <div><span class="section-kicker">MATERIALES AUXILIARES</span><h3>Acabado, montaje y embalaje</h3></div>
+              <span class="card-icon coral"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14.7 6.3 3 3M4 20l4.5-1 10-10a2.1 2.1 0 0 0-3-3l-10 10L4 20Z"/></svg></span>
+            </div>
+            <div class="aux-builder">
+              <label class="field">
+                <span>Tipo de acabado o material</span>
+                <select id="auxType">
+                  <option>Pintura</option>
+                  <option>Masilla</option>
+                  <option>Tira LED / electrónica</option>
+                  <option>Otra impresión</option>
+                  <option>Packaging</option>
+                  <option selected>Pegamento</option>
+                  <option>Tornillería</option>
+                  <option>Insertos roscados</option>
+                  <option>Imanes</option>
+                  <option>Lijado</option>
+                  <option>Barniz / acabado</option>
+                  <option>Transporte</option>
+                  <option value="Otro">Otro concepto…</option>
+                </select>
+              </label>
+              <label class="field hidden" id="auxCustomField">
+                <span>Nombre del concepto</span>
+                <input id="auxCustomName" type="text" maxlength="50" placeholder="Ej. metacrilato">
+              </label>
+              <label class="field">
+                <span>Coste</span>
+                <div class="input-suffix"><input id="auxAmount" type="number" value="0.20" min="0" step="0.01"><b>€</b></div>
+              </label>
+              <button class="button button-primary aux-add-button" id="addAuxButton" type="button">+ Añadir</button>
+            </div>
+            <div class="aux-items-list" id="auxItemsList"></div>
+            <div class="section-total"><span>Total de materiales auxiliares</span><strong id="auxTotalPreview">0,00 €</strong></div>
+          </section>
+
+          <section class="card input-card">
+            <div class="card-heading">
+              <div><span class="section-kicker">CIERRE DEL PRESUPUESTO</span><h3>Mantenimiento, beneficio e IVA</h3></div>
+              <span class="card-icon coral"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15.5A3.5 3.5 0 1 0 12 8a3.5 3.5 0 0 0 0 7.5Z"/><path d="M19 12a7 7 0 0 1-.2 1.7l2 1.5-2 3.5-2.5-1a7 7 0 0 1-3 1.7L13 22H9l-.4-2.6a7 7 0 0 1-3-1.7l-2.4 1-2-3.5 2-1.5A7 7 0 0 1 3 12c0-.6 0-1.2.2-1.7l-2-1.5 2-3.5 2.5 1a7 7 0 0 1 3-1.7L9 2h4l.4 2.6a7 7 0 0 1 3 1.7l2.4-1 2 3.5-2 1.5c.1.5.2 1.1.2 1.7Z"/></svg></span>
+            </div>
+            <div class="form-grid budget-fields">
+              <label class="field">
+                <span>Mantenimiento / desgaste</span>
+                <div class="input-suffix"><input id="maintenancePercent" type="number" value="10" min="0" max="1000" step="0.5"><b>%</b></div>
+                <small>Aplicado sobre material, electricidad, operarios y auxiliares</small>
+              </label>
+              <label class="field"><span>Beneficio sobre coste</span><div class="input-suffix"><input id="profitPercent" type="number" value="30" min="0" max="1000" step="1"><b>%</b></div><small>Habitualmente entre 15% y 30%</small></label>
+              <label class="field"><span>IVA</span><div class="input-suffix"><input id="vatPercent" type="number" value="21" min="0" max="100" step="1"><b>%</b></div></label>
+              <label class="field partner-field"><span>Recargo de reventa tradicional</span><div class="input-suffix"><input id="partnerMarkupPercent" type="number" value="20" min="0" max="1000" step="1"><b>%</b></div><small>Se suma automáticamente sobre el precio recomendado</small></label>
+            </div>
+          </section>
+
+          <section class="card input-card commercial-inputs">
+            <div class="card-heading"><div><span class="section-kicker">TARIFA COMERCIAL</span><h3>Tiendas y personalizaciones a precio cerrado</h3></div></div>
+            <p>El cálculo técnico se conserva. Esta tarifa permite reservar tu beneficio y dejar margen a la tienda.</p>
+            <div class="form-grid">
+              <label class="field"><span>Canal de venta</span><select id="saleChannel"><option value="direct">Venta directa</option><option value="shop">Venta a tienda</option></select></label>
+              <label class="field"><span>Tipo de tarifa</span><select id="fixedPricing"><option value="no">Coste de la pieza actual</option><option value="yes">Precio cerrado con colchón</option></select></label>
+              <label class="field"><span>Tu beneficio mayorista sobre coste (%)</span><input id="wholesaleProfit" type="number" value="20" min="0" step="1"></label>
+              <label class="field"><span>Margen de la tienda sobre su venta (%)</span><input id="shopMargin" type="number" value="40" min="0" max="99" step="1"><small>Un margen del 40% deja a la tienda el 40% del PVP sin IVA.</small></label>
+              <label class="field"><span>PVP objetivo por unidad, con IVA (€)</span><input id="targetPvp" type="number" value="0" min="0" step="0.01"><small>Opcional. Pon 0 para calcular el PVP necesario.</small></label>
+              <label class="field"><span>Pedido mínimo para tiendas (uds.)</span><input id="shopMinimum" type="number" value="1" min="1" step="1"><small>Si calculas menos unidades, la oferta mostrará el total para este mínimo, manteniendo el precio por unidad.</small></label>
+            </div>
+            <div id="fixedFields" class="hidden">
+              <h4>Un mismo precio para pequeñas variaciones</h4>
+              <p>Al cargar un fichero nuevo, su coste por unidad se guarda automáticamente como referencia. Se mantiene tu porcentaje de colchón para absorber pequeñas variaciones de material, tiempo o acabado. Si introduces los datos manualmente, puedes usar el botón para actualizar la referencia.</p>
+              <div class="form-grid">
+                <label class="field"><span>Nombre de la tarifa</span><input id="rateName" value="Llavero con nombre" maxlength="100"></label>
+                <label class="field"><span>Coste de referencia por unidad, sin IVA (€)</span><input id="referenceCost" type="number" value="0" min="0" step="0.01"></label>
+                <label class="field"><span>Margen para variaciones del coste (%)</span><input id="costBuffer" type="number" value="10" min="0" step="1"></label>
+              </div>
+              <button class="button" id="captureReference" type="button">Usar el coste actual como referencia</button>
+              <p>Ejemplo: un coste habitual de 1 € con un 15% de colchón cubre hasta 1,15 € antes de aplicar tu beneficio e IVA. El precio permanece fijo; si una variante supera ese coste, verás un aviso y el beneficio que te queda. No hay límites de letras.</p>
+            </div>
+          </section>
+        </form>
+
+        <aside class="results-column">
+          <section class="result-card">
+            <div class="result-top">
+              <span>TU PRECIO RECOMENDADO DE VENTA</span>
+              <div class="price-row">
+                <strong id="recommendedPrice">0,00 €</strong>
+                <span id="perUnitLabel">por unidad</span>
+              </div>
+              <p id="totalLabel">Total del pedido: 0,00 €</p>
+              <div class="partner-price">
+                <div>
+                  <span>PRECIO DE REVENTA</span>
+                  <small id="partnerMarkupLabel">Precio base +20%</small>
+                </div>
+                <div>
+                  <strong id="partnerPrice">0,00 €</strong>
+                  <small id="partnerTotalLabel">por pieza</small>
+                </div>
+              </div>
+            </div>
+
+            <div class="result-body">
+              <div class="summary-pills">
+                <div>
+                  <span>COSTE BASE</span>
+                  <strong id="realCost">0,00 €</strong>
+                </div>
+                <div>
+                  <span>BENEFICIO</span>
+                  <strong id="profitValue">0,00 €</strong>
+                </div>
+                <div>
+                  <span>IVA</span>
+                  <strong id="vatValue">0,00 €</strong>
+                </div>
+              </div>
+
+              <div class="breakdown-heading">
+                <div>
+                  <span class="section-kicker">DESGLOSE</span>
+                  <h3>¿Dónde va el dinero?</h3>
+                </div>
+                <span id="costPerHour">0,00 €/h</span>
+              </div>
+
+              <div class="chart-wrap">
+                <div class="donut" id="costDonut">
+                  <div><span>COSTE</span><strong id="donutTotal">0,00 €</strong></div>
+                </div>
+                <div class="legend" id="costLegend"></div>
+              </div>
+
+              <div class="cost-lines" id="costLines"></div>
+
+              <div class="recommendation">
+                <span class="bulb">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18h6m-5 3h4m3.5-8.5A6.5 6.5 0 1 0 7 17.6c.7.5 1 1.2 1 1.4h8c0-.2.3-.9 1-1.4a6.5 6.5 0 0 0 .5-5.1Z"/></svg>
+                </span>
+                <p><strong>Consejo</strong><span id="tipText">Completa los datos para ver una recomendación.</span></p>
+              </div>
+            </div>
+          </section>
+
+          <section class="card commercial-result" aria-live="polite">
+            <span class="section-kicker">TARIFA COMERCIAL</span><h3 id="offerTitle">Venta directa</h3>
+            <div id="offerPriceHighlight" class="offer-price-highlight hidden"><span id="offerPriceLabel"></span><strong id="offerPriceAmount"></strong><span class="offer-price-unit">por unidad · IVA incluido</span><p id="offerPriceTotal"></p></div><div id="offerResults"></div><p id="offerStatus" role="status"></p>
+            <button class="button button-primary full-width" id="copyOffer" type="button">Copiar oferta para el cliente</button>
+            <small>La oferta no incluye tus costes ni beneficios. Preparar producto en catálogo preparará un borrador sin publicarlo.</small>
+          </section>
+          <button class="button button-primary full-width" id="copyButton" type="button">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 8h11a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H10a2 2 0 0 1-2-2V8Z"/><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3"/></svg>
+            Copiar resumen
+          </button>
+          <button class="button button-inventory full-width" id="inventoryButton" type="button">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7.5 12 3l8 4.5-8 4.5-8-4.5Z"/><path d="M4 7.5V16l8 5 8-5V7.5M12 12v9"/><path d="M17 2v5m-2.5-2.5h5"/></svg>
+            Preparar producto en catálogo
+          </button>
+          <p class="privacy-note">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><path d="m9 12 2 2 4-5"/></svg>
+            Tus archivos G-code nunca salen de este dispositivo.
+          </p>
+        </aside>
+      </div>
+    </main>
+
+    <footer>
+      <span>Coste3D</span>
+      <p>Calcula con criterio. Vende con confianza.</p>
+    </footer>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script src="commercial.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
