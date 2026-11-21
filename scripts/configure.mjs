@@ -1,0 +1,11 @@
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import {fileURLToPath} from 'node:url';
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const [siteID] = process.argv.slice(2);
+if (!siteID || !/^[a-z0-9-]+$/.test(siteID)) throw new Error('Uso: node scripts/configure.mjs ID_SITIO_HOSTING_DEL_CATALOGO');
+const file = path.join(root,'.firebaserc');
+const config = JSON.parse(await fs.readFile(file,'utf8'));
+config.targets['savvy-nature-200119'].hosting = {catalogo:[siteID]};
+await fs.writeFile(file,JSON.stringify(config,null,2)+'\n');
+console.log('Hosting del catálogo configurado; la base compartida no se ha modificado.');

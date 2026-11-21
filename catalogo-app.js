@@ -10,9 +10,7 @@
   function safeUrl(value) { try { const url = new URL(value); return ['https:','http:'].includes(url.protocol) ? url.href : ''; } catch { return ''; } }
   try {
     const databaseURL = window.CATALOGO_CONFIG?.firebaseConfig?.databaseURL;
-    if (!databaseURL) { status('Falta configurar la nueva base de datos del catálogo en firebase-config.js.'); return; }
-    const databaseHost = new URL(databaseURL).hostname;
-    if (databaseHost === 'savvy-nature-200119-default-rtdb.europe-west1.firebasedatabase.app') { status('El catálogo requiere su propia base de datos. No se permite conectar con la base del inventario.'); return; }
+    if (!databaseURL) { status('Falta configurar la base de datos del catálogo en firebase-config.js.'); return; }
     const [appSDK, database, authentication, storageSDK] = await window.CATALOGO_BOOT.loadFirebase();
     const app = appSDK.initializeApp(window.CATALOGO_CONFIG.firebaseConfig, 'dev3d-catalog');
     const db = database.getDatabase(app, databaseURL), auth = authentication.getAuth(app), storage = storageSDK.getStorage(app);

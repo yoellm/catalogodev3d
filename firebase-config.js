@@ -2,7 +2,7 @@ window.CATALOGO_CONFIG = Object.freeze({
   firebaseConfig: Object.freeze({
     apiKey: 'AIzaSyAB57gP3-puL3O6kIAaxihjnuEQBnOw_DM',
     authDomain: 'savvy-nature-200119.firebaseapp.com',
-    databaseURL: '',
+    databaseURL: 'https://savvy-nature-200119-default-rtdb.europe-west1.firebasedatabase.app',
     projectId: 'savvy-nature-200119',
     storageBucket: 'savvy-nature-200119.firebasestorage.app',
     messagingSenderId: '46842974811',

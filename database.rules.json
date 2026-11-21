@@ -2,6 +2,93 @@
   "rules": {
     ".read": false,
     ".write": false,
+    "productos": {
+      ".read": "auth != null && (auth.token.email == 'yoelmejias@outlook.es' || auth.token.email == 'irelandmorcillo@gmail.com' || auth.token.email == 'djsubixj@gmail.com' || auth.token.email == 'xiomaralamasmala@gmail.com' || root.child('dev3dVendedores').child(auth.uid).child('activo').val() == true)",
+      "$productoId": {
+        ".write": "auth != null && (auth.token.email == 'yoelmejias@outlook.es' || auth.token.email == 'irelandmorcillo@gmail.com' || auth.token.email == 'djsubixj@gmail.com' || auth.token.email == 'xiomaralamasmala@gmail.com')",
+        ".validate": "(auth.token.email == 'yoelmejias@outlook.es' || auth.token.email == 'irelandmorcillo@gmail.com') || ((auth.token.email == 'djsubixj@gmail.com' || auth.token.email == 'xiomaralamasmala@gmail.com') && data.exists() && newData.exists() && newData.child('nombre').val() == data.child('nombre').val() && newData.child('yoel').val() == data.child('yoel').val() && newData.child('proximo').val() == data.child('proximo').val() && newData.child('ocultoIndex').val() == data.child('ocultoIndex').val() && newData.child('porEncargo').val() == data.child('porEncargo').val()) || (root.child('dev3dVendedores').child(auth.uid).child('activo').val() == true && data.exists() && newData.exists() && newData.child('stock').isNumber() && newData.child('stock').val() >= 0 && newData.child('nombre').val() == data.child('nombre').val() && newData.child('yoel').val() == data.child('yoel').val() && newData.child('laura').val() == data.child('laura').val() && newData.child('proximo').val() == data.child('proximo').val() && newData.child('reservados').val() == data.child('reservados').val() && newData.child('vendidos').val() == data.child('vendidos').val() && newData.child('vyoel').val() == data.child('vyoel').val() && newData.child('vLaura').val() == data.child('vLaura').val() && newData.child('imagen').val() == data.child('imagen').val() && newData.child('ocultoIndex').val() == data.child('ocultoIndex').val() && newData.child('porEncargo').val() == data.child('porEncargo').val())",
+        "stock": {
+          ".write": "auth != null && root.child('dev3dVendedores').child(auth.uid).child('activo').val() == true"
+        },
+        "emailAgotadoEnviado": {
+          ".write": "auth != null && root.child('dev3dVendedores').child(auth.uid).child('activo').val() == true"
+        }
+      }
+    },
+    "productos_publicos": {
+      ".read": true,
+      "$productoId": {
+        ".write": "auth != null && (auth.token.email == 'yoelmejias@outlook.es' || auth.token.email == 'irelandmorcillo@gmail.com' || auth.token.email == 'djsubixj@gmail.com' || auth.token.email == 'xiomaralamasmala@gmail.com')",
+        ".validate": "!newData.exists() || (newData.hasChildren(['nombre','laura','stock']) && newData.child('nombre').isString() && newData.child('laura').isNumber() && newData.child('stock').isNumber() && (!newData.child('porEncargo').exists() || newData.child('porEncargo').isBoolean()))",
+        "stock": {
+          ".write": "auth != null && root.child('dev3dVendedores').child(auth.uid).child('activo').val() == true"
+        }
+      }
+    },
+    "logs": {
+      ".read": "auth != null && (auth.token.email == 'yoelmejias@outlook.es' || auth.token.email == 'irelandmorcillo@gmail.com')",
+      ".write": "auth != null && (auth.token.email == 'yoelmejias@outlook.es' || auth.token.email == 'irelandmorcillo@gmail.com')",
+      "$logId": {
+        ".write": "auth != null && !data.exists() && (auth.token.email == 'yoelmejias@outlook.es' || auth.token.email == 'irelandmorcillo@gmail.com' || auth.token.email == 'djsubixj@gmail.com' || auth.token.email == 'xiomaralamasmala@gmail.com')"
+      }
+    },
+    "liquidaciones": {
+      ".read": "auth != null && (auth.token.email == 'yoelmejias@outlook.es' || auth.token.email == 'irelandmorcillo@gmail.com')",
+      ".write": "auth != null && (auth.token.email == 'yoelmejias@outlook.es' || auth.token.email == 'irelandmorcillo@gmail.com')"
+    },
+    "dev3dVendedores": {
+      ".read": "auth != null && (auth.token.email == 'yoelmejias@outlook.es' || auth.token.email == 'irelandmorcillo@gmail.com')",
+      ".write": "auth != null && (auth.token.email == 'yoelmejias@outlook.es' || auth.token.email == 'irelandmorcillo@gmail.com')",
+      "$uid": {
+        ".read": "auth != null && auth.uid == $uid"
+      }
+    },
+    "dev3dProductos": {
+      ".read": "auth != null && (auth.token.email == 'yoelmejias@outlook.es' || auth.token.email == 'irelandmorcillo@gmail.com' || root.child('dev3dVendedores').child(auth.uid).child('activo').val() == true)",
+      ".write": "auth != null && (auth.token.email == 'yoelmejias@outlook.es' || auth.token.email == 'irelandmorcillo@gmail.com')",
+      "$productoId": {
+        ".validate": "!newData.exists() || (newData.child('precioBase').isNumber() && newData.child('precioBase').val() >= 0 && newData.child('precioPredeterminado').isNumber() && newData.child('precioPredeterminado').val() >= newData.child('precioBase').val())"
+      }
+    },
+    "dev3dPrecios": {
+      ".read": "auth != null && (auth.token.email == 'yoelmejias@outlook.es' || auth.token.email == 'irelandmorcillo@gmail.com')",
+      "$uid": {
+        ".read": "auth != null && auth.uid == $uid",
+        ".write": "auth != null && ((auth.uid == $uid && root.child('dev3dVendedores').child(auth.uid).child('activo').val() == true) || auth.token.email == 'yoelmejias@outlook.es' || auth.token.email == 'irelandmorcillo@gmail.com')",
+        "$productoId": {
+          ".validate": "!newData.exists() || (newData.hasChildren(['precio']) && newData.child('precio').isNumber() && newData.child('precio').val() >= 0)"
+        }
+      }
+    },
+    "dev3dVentas": {
+      ".read": "auth != null && (auth.token.email == 'yoelmejias@outlook.es' || auth.token.email == 'irelandmorcillo@gmail.com')",
+      "$uid": {
+        ".read": "auth != null && auth.uid == $uid",
+        ".write": "auth != null && (auth.token.email == 'yoelmejias@outlook.es' || auth.token.email == 'irelandmorcillo@gmail.com' || (auth.uid == $uid && root.child('dev3dVendedores').child(auth.uid).child('activo').val() == true))",
+        "$ventaId": {
+          ".validate": "!newData.exists() || (newData.child('vendedorUid').val() == $uid && newData.child('productoId').isString() && newData.child('cantidad').isNumber() && newData.child('cantidad').val() > 0 && newData.child('precioBase').isNumber() && newData.child('precioVenta').isNumber() && newData.child('totalCobrado').isNumber() && newData.child('gananciaVendedor').isNumber())"
+        }
+      }
+    },
+    "dev3dLiquidaciones": {
+      ".read": "auth != null && (auth.token.email == 'yoelmejias@outlook.es' || auth.token.email == 'irelandmorcillo@gmail.com')",
+      ".write": "auth != null && (auth.token.email == 'yoelmejias@outlook.es' || auth.token.email == 'irelandmorcillo@gmail.com')",
+      "$uid": {
+        ".read": "auth != null && auth.uid == $uid"
+      }
+    },
+    "dev3dMovimientos": {
+      ".read": "auth != null && (auth.token.email == 'yoelmejias@outlook.es' || auth.token.email == 'irelandmorcillo@gmail.com')",
+      ".write": "auth != null && (auth.token.email == 'yoelmejias@outlook.es' || auth.token.email == 'irelandmorcillo@gmail.com')"
+    },
+    "gastos": {
+      ".read": "auth != null && (auth.token.email == 'yoelmejias@outlook.es' || auth.token.email == 'irelandmorcillo@gmail.com')",
+      ".write": "auth != null && (auth.token.email == 'yoelmejias@outlook.es' || auth.token.email == 'irelandmorcillo@gmail.com')"
+    },
+    "backup": {
+      ".read": "auth != null && (auth.token.email == 'yoelmejias@outlook.es' || auth.token.email == 'irelandmorcillo@gmail.com')",
+      ".write": "auth != null && (auth.token.email == 'yoelmejias@outlook.es' || auth.token.email == 'irelandmorcillo@gmail.com')"
+    },
     "dev3dCatalogoPublico": {
       ".read": true,
       ".write": "auth != null && (auth.token.email == 'yoelmejias@outlook.es' || auth.token.email == 'irelandmorcillo@gmail.com')",

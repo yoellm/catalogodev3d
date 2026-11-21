@@ -1,0 +1,12 @@
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import {fileURLToPath} from 'node:url';
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const [existingPath] = process.argv.slice(2);
+if (!existingPath) throw new Error('Uso: node scripts/merge-rules.mjs RUTA_REGLAS_ACTUALES_EXPORTADAS.json');
+const current = JSON.parse(await fs.readFile(existingPath,'utf8'));
+if (!current.rules || typeof current.rules !== 'object') throw new Error('Archivo de reglas no válido.');
+const fragment = JSON.parse(await fs.readFile(path.join(root,'catalogo.rules.json'),'utf8'));
+Object.assign(current.rules,fragment.rules);
+await fs.writeFile(path.join(root,'database.rules.json'),JSON.stringify(current,null,2)+'\n');
+console.log('Reglas combinadas: solo se han añadido o actualizado las tres ramas del catálogo. No se han publicado.');

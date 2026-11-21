@@ -1,45 +1,54 @@
 # DEV3D Studio · Catálogo independiente
 
-Proyecto estático listo para un repositorio propio. No importa archivos del inventario y no usa su base de datos. No necesita instalación de dependencias para funcionar; se sirve por HTTP/HTTPS.
+Aplicación estática para un repositorio y alojamiento propios. Utiliza Firebase del proyecto savvy-nature-200119 y la misma Realtime Database que el inventario, con datos separados por ramas.
 
-## Estado de la nueva base de datos
+## Separación de los datos
 
-La instancia remota aún NO está creada. La URL queda vacía intencionadamente; la aplicación muestra un aviso de configuración y no conecta con la base antigua. El script de configuración también rechaza esa base.
+El catálogo solo consulta y modifica:
 
-1. Abre Firebase Console, proyecto savvy-nature-200119, Realtime Database. Crea una nueva instancia (nombre sugerido: dev3dstudio-catalogo, sujeto a disponibilidad) en europe-west1, con reglas bloqueadas inicialmente. Crear instancias adicionales en el mismo proyecto requiere Blaze: https://firebase.google.com/docs/database/usage/sharding
-2. Copia la URL REAL que devuelva Firebase. Con Node instalado, ejecuta desde esta carpeta:
+- dev3dCatalogoPublico: nombres, fotografías, descripciones, categorías y PVP.
+- dev3dCatalogoMayorista: precios mayoristas y mínimos por producto; solo administradores y tiendas activas pueden leerlos.
+- dev3dTiendas: autorizaciones de tiendas; solo administradores pueden modificarlas. Cada usuario puede leer únicamente su propio perfil.
 
-   node scripts/configure.mjs https://URL_REAL_DE_LA_NUEVA_BASE
+No lee ni modifica productos, productos_publicos, stock, vendedores, ventas ni liquidaciones del inventario. Crear, editar o eliminar un producto del catálogo solo afecta a sus ramas. No hay sincronización entre aplicaciones. Las imágenes se guardan en productos/dev3d-catalogo/ del bucket Storage compartido.
 
-3. Instala Firebase CLI si no la tienes, inicia sesión con firebase login y publica SOLO las reglas de la nueva base:
+Se comparten el proyecto Firebase, la instancia de base de datos, Authentication y Storage. Las autorizaciones de tiendas son propias del catálogo. La aplicación y sus archivos no dependen del repositorio de inventario.
 
-   firebase deploy --only database:catalogo
+## Uso
 
-El target catalogo apunta exclusivamente a la nueva instancia. No publiques las reglas de este proyecto sobre la base del inventario.
+- index.html: catálogo público y acceso para tiendas.
+- admin.html: gestión privada de productos, fotografías, precios y mínimos; autorización y revocación de tiendas.
+- Crear las cuentas de tienda en Firebase Authentication (Email/Password), copiar el UID y autorizarlo en el panel. No se concede acceso al inventario por tener rol tienda.
+- Los administradores se configuran tanto en firebase-config.js como en catalogo.rules.json.
+- Vista local: python -m http.server 8080, y abrir http://localhost:8080.
 
-## Publicación y repositorio
+## Publicar las reglas compartidas
 
-Copia esta carpeta completa a tu nuevo repositorio. Para una vista local: python -m http.server 8080, y abre http://localhost:8080. Puedes usar cualquier alojamiento estático y autorizar su dominio en Firebase Authentication.
+La URL real de la base existente ya está configurada. No hay que crear otra instancia.
 
-Si eliges Firebase Hosting, crea un SITIO nuevo dentro del proyecto y pasa su ID como segundo argumento de configure.mjs. Después ejecuta firebase deploy --only hosting:catalogo. Se exige un target explícito para no sobrescribir el sitio del inventario.
+Firebase publica el conjunto completo de reglas de una instancia. Por eso database.rules.json conserva las reglas actuales del repositorio del inventario y añade las tres ramas del catálogo. Se ha actualizado también el archivo local de reglas del inventario para que un despliegue posterior no borre los permisos del catálogo. El inventario sigue sin enlaces ni código de esta aplicación.
 
-## Accesos
+Si las reglas de producción han cambiado, exportarlas desde Firebase Console y combinarlas antes de desplegar:
 
-- index.html: catálogo público con búsqueda, categoría y ordenación. Muestra PVP; las tiendas activas ven también su tarifa mayorista y mínimo por producto.
-- admin.html: panel exclusivo para administradores, con nombre, descripción, categoría, foto, PVP, mayorista y mínimo. Gestiona también las autorizaciones de tiendas.
-- Crea cada cuenta de tienda en Firebase Authentication (Email/Password), copia su UID y autorízalo en admin.html. Los usuarios no pueden concederse el rol tienda. Desactivar una tienda retira sus tarifas de la interfaz.
-- Los administradores se configuran en firebase-config.js Y en database.rules.json; ambos deben coincidir.
+    node scripts/merge-rules.mjs RUTA_REGLAS_ACTUALES_EXPORTADAS.json
 
-## Qué se comparte y qué queda separado
+El archivo catalogo.rules.json es únicamente el fragmento de reglas del catálogo; no publicarlo solo como reglas de toda la base. Mantener actualizado el conjunto combinado en ambos repositorios cuando cambien permisos.
 
-Se reutilizan el proyecto Firebase, Authentication y el bucket Storage. Las cuentas pertenecen al mismo proyecto; los permisos de tiendas se guardan exclusivamente en la nueva base. El código, el despliegue, los productos, las tarifas y las autorizaciones del catálogo son independientes del inventario.
+Con Firebase CLI instalado y sesión iniciada:
 
-Las imágenes nuevas van a productos/dev3d-catalogo/ dentro del bucket existente. No se publica ninguna regla de Storage desde este repositorio, para no sustituir las de la otra aplicación. Las reglas actuales permiten subir imágenes a los administradores. También se puede utilizar una URL de imagen externa.
+    firebase deploy --only database:catalogo
 
-Ramas de la NUEVA base: dev3dCatalogoPublico (lectura pública), dev3dCatalogoMayorista (solo tienda activa o administrador), dev3dTiendas (solo administrador y lectura de perfil propio). Reglas con denegación por defecto, validación de importes y mínimo entero positivo. No se sincronizan datos con el inventario.
+El target catalogo apunta a savvy-nature-200119-default-rtdb. No se han publicado reglas remotamente desde esta sesión. No se modifica ninguna regla de Storage.
 
-## Verificación antes de publicar
+## Publicar la web
 
-Probar con administrador: crear, editar y eliminar productos y autorizar/revocar tienda. Probar anónimo: solo PVP y lectura de tarifas denegada. Probar tienda activa: PVP, mayorista y mínimo; escritura denegada. Probar cuenta sin autorización: solo PVP. Validar también las reglas con Firebase Emulator antes de uso real.
+Subir los archivos estáticos al alojamiento elegido y autorizar su dominio en Firebase Authentication. Para Firebase Hosting, crear un sitio propio del catálogo y configurar su ID:
 
-No se han ejecutado pruebas contra servicios remotos ni publicado reglas. No incluye carrito, pagos ni gestión de pedidos.
+    node scripts/configure.mjs ID_SITIO_HOSTING_DEL_CATALOGO
+    firebase deploy --only hosting:catalogo
+
+El target de Hosting es independiente para no sobrescribir el sitio del inventario.
+
+## Verificar tras publicar
+
+Administrador: crear, editar y eliminar productos, subir imágenes y autorizar tiendas. Anónimo: ver solo PVP y tener denegada la lectura mayorista. Tienda activa: ver PVP, mayorista y mínimo, sin permiso de escritura. Tienda desactivada: solo PVP. Comprobar que ninguna operación altera productos ni stock del inventario. No se han realizado pruebas con usuarios reales ni publicado reglas.

@@ -1,0 +1,65 @@
+{
+  "rules": {
+    "dev3dCatalogoPublico": {
+      ".read": true,
+      ".write": "auth != null && (auth.token.email == 'yoelmejias@outlook.es' || auth.token.email == 'irelandmorcillo@gmail.com')",
+      "$id": {
+        ".validate": "newData.hasChildren(['nombre','precio'])",
+        "nombre": {
+          ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 150"
+        },
+        "precio": {
+          ".validate": "newData.isNumber() && newData.val() >= 0"
+        },
+        "descripcion": {
+          ".validate": "newData.isString() && newData.val().length <= 3000"
+        },
+        "categoria": {
+          ".validate": "newData.isString() && newData.val().length <= 100"
+        },
+        "imagen": {
+          ".validate": "newData.isString()"
+        },
+        "$other": {
+          ".validate": false
+        }
+      }
+    },
+    "dev3dCatalogoMayorista": {
+      ".read": "(auth != null && (auth.token.email == 'yoelmejias@outlook.es' || auth.token.email == 'irelandmorcillo@gmail.com')) || (auth != null && root.child('dev3dTiendas').child(auth.uid).child('rol').val() == 'tienda' && root.child('dev3dTiendas').child(auth.uid).child('activo').val() == true)",
+      ".write": "auth != null && (auth.token.email == 'yoelmejias@outlook.es' || auth.token.email == 'irelandmorcillo@gmail.com')",
+      "$id": {
+        ".validate": "newData.hasChildren(['precio','minimo'])",
+        "precio": {
+          ".validate": "newData.isNumber() && newData.val() >= 0"
+        },
+        "minimo": {
+          ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() % 1 == 0"
+        },
+        "$other": {
+          ".validate": false
+        }
+      }
+    },
+    "dev3dTiendas": {
+      ".read": "auth != null && (auth.token.email == 'yoelmejias@outlook.es' || auth.token.email == 'irelandmorcillo@gmail.com')",
+      ".write": "auth != null && (auth.token.email == 'yoelmejias@outlook.es' || auth.token.email == 'irelandmorcillo@gmail.com')",
+      "$uid": {
+        ".read": "auth != null && auth.uid == $uid",
+        ".validate": "newData.hasChildren(['rol','activo','nombre'])",
+        "rol": {
+          ".validate": "newData.val() == 'tienda'"
+        },
+        "activo": {
+          ".validate": "newData.isBoolean()"
+        },
+        "nombre": {
+          ".validate": "newData.isString()"
+        },
+        "$other": {
+          ".validate": false
+        }
+      }
+    }
+  }
+}
