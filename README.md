@@ -61,7 +61,7 @@ En admin.html, inicia sesión como administrador y pulsa Calculadora de costes y
 
 Preparar producto en catálogo devuelve un borrador al formulario: nombre, PVP, precio mayorista y mínimo, con IVA según lo configurado en la calculadora. En venta a tienda se usa el PVP evaluado y en directa el precio directo; el mayorista se calcula con los ajustes para tiendas. Revisa precios, impuestos, categoría y fotografía y pulsa Guardar producto para publicarlo. No se guardan costes ni beneficios internos en las ramas públicas. El mínimo no aplica descuento unitario.
 
-La calculadora se carga dentro del panel únicamente tras verificar el administrador. El HTML y JavaScript estáticos son públicos en GitHub Pages; no contienen datos privados del negocio. El control de escritura de productos y lectura de tarifas depende de las reglas Firebase.
+La calculadora se inicializa como pantalla nativa del panel únicamente tras verificar el administrador. El HTML y JavaScript estáticos son públicos en GitHub Pages; no contienen datos privados del negocio. El control de escritura de productos y lectura de tarifas depende de las reglas Firebase.
 
 
 ## Alta de tiendas desde la web
@@ -98,3 +98,12 @@ Se incluyen metadatos básicos, datos de organización y un sitemap con las dos 
 La portada muestra hasta cuatro productos del catálogo con nombre, foto HTTP/HTTPS y precio público válidos. La selección se actualiza con Firebase y enlaza a cada pieza del catálogo. Con el catálogo vacío se muestra un estado informativo y un enlace al Instagram del estudio; no se incluyen productos inventados ni productos del inventario anterior.
 
 La sección de reseñas enlaza a la ficha de Google facilitada por el propietario. web-content.js admite hasta tres comentarios reales con author, text, rating (entero de 1 a 5) y url opcional de Google. Actualmente no hay comentarios copiados ni puntuación agregada. El contenido se incorpora manualmente y no se presenta como sincronización automática. No se utiliza Google Places, servicios de terceros ni APIs de pago.
+
+
+## Calculadora como pantalla nativa
+
+La calculadora ya no usa iframe ni un documento independiente: sus controles se montan directamente en Administración → Calculadora, con el menú y el tema de la web. Las consultas DOM y los estilos se limitan a su contenedor para evitar interferir en productos o tiendas. Los borradores se entregan por una función interna que vuelve a comprobar el administrador y valida los datos; no se utilizan mensajes entre ventanas.
+
+Se conserva la clave local dev3d-catalogo-costes-v1 para mantener los ajustes existentes. Salir de la pantalla y volver no duplica los controles ni pierde el cálculo en curso. Cerrar sesión desmonta los controles y desactiva sus acciones. La antigua dirección calculadora/index.html redirige a admin.html#calculadora.
+
+Se mantienen cálculo manual, materiales, electricidad, trabajo, margen, IVA, precios para tiendas, mínimo, precio cerrado, lectura de G-code y G-code 3MF, copia e impresión. Para ejecutar las pruebas, instalar dependencias de desarrollo con npm ci y ejecutar npm test. linkedom se usa solo en pruebas; la web sigue siendo estática y no necesita instalación ni compilación para publicarse. La prueba nativa utiliza los controles del HTML real y un 3MF comprimido de dos placas.

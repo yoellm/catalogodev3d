@@ -8,7 +8,7 @@
   if (homePage && location.hash === '#catalogo') { location.replace('catalogo.html'); return; }
   const money = value => new Intl.NumberFormat('es-ES', {style:'currency',currency:'EUR'}).format(value);
   let publicProducts = {}, wholesale = {}, shops = {}, currentUser = null, admin = false, generation = 0;
-  let subscriptions = [], tradeStop = null, productHashHandled = false;
+  let subscriptions = [], tradeStop = null, productHashHandled = false, calculatorInstance = null;
   const status = message => { $('status').textContent = message; };
   function el(tag, text, className) { const node = document.createElement(tag); if (text !== undefined) node.textContent = text; if (className) node.className = className; return node; }
   function safeUrl(value) { try { const url = new URL(value); return ['https:','http:'].includes(url.protocol) ? url.href : ''; } catch { return ''; } }
@@ -47,6 +47,21 @@
       }
     }
   }
+  function importCalculatorDraft(data){
+    if (!admin || !adminPage) return false;
+    const draft=window.CATALOGO_DRAFT.validateDraft(data);
+    if (!draft) return false;
+        const form = $('productForm');
+        if ((form.elements.id.value || form.elements.nombre.value.trim()) && !confirm('Hay un producto en edición. ¿Sustituir el formulario por un nuevo borrador de la calculadora?')) return false;
+        form.reset();
+        form.elements.id.value = '';
+        for (const [key,value] of Object.entries(draft)) form.elements[key].value = value;
+        $('formTitle').textContent = 'Nuevo producto desde la calculadora';
+        showAdminView('catalog');
+        status('Precios y mínimo preparados. Añade la foto y la categoría, revisa los datos y pulsa Guardar producto para publicarlo.');
+        form.scrollIntoView({behavior:'smooth'});
+    return true;
+  }
   function showAdminView(view) {
     if (!admin || !adminPage) return;
     if (!['home','catalog','shops','calculator'].includes(view)) view = 'home';
@@ -63,7 +78,14 @@
       calculator:['Calculadora de precios','Calcula tus costes y convierte el resultado en un nuevo producto.']
     }[view];
     $('viewTitle').textContent = content[0]; $('viewDescription').textContent = content[1];
-    if (view === 'calculator' && !$('calculatorFrame').getAttribute('src')) $('calculatorFrame').src = 'calculadora/index.html?v=1';
+    document.body.dataset.adminView = view;
+    if (view === 'calculator' && !calculatorInstance) {
+      try {
+        const mount = $('calculatorMount');
+        mount.replaceChildren($('calculatorTemplate').content.cloneNode(true));
+        calculatorInstance = window.DEV3D_CALCULATOR.mount(mount.firstElementChild,{onDraft:importCalculatorDraft});
+      } catch(error) { console.error(error); $('calculatorMount').replaceChildren(); status('No se pudo abrir la calculadora. Recarga la página e inténtalo de nuevo.'); }
+    }
     $('viewTitle').focus?.({preventScroll:true});
   }
   if (homePage) {
@@ -195,20 +217,6 @@
       $('goShops').onclick = () => showAdminView('shops');
       $('openCalculator').onclick = () => showCalculator(true);
       $('closeCalculator').onclick = () => showAdminView('home');
-      window.addEventListener('message', event => {
-        if (!admin || event.origin !== location.origin || event.source !== $('calculatorFrame').contentWindow) return;
-        const draft = window.CATALOGO_DRAFT.validateDraft(event.data);
-        if (!draft) return;
-        const form = $('productForm');
-        if ((form.elements.id.value || form.elements.nombre.value.trim()) && !confirm('Hay un producto en edición. ¿Sustituir el formulario por un nuevo borrador de la calculadora?')) return;
-        form.reset();
-        form.elements.id.value = '';
-        for (const [key,value] of Object.entries(draft)) form.elements[key].value = value;
-        $('formTitle').textContent = 'Nuevo producto desde la calculadora';
-        showCalculator(false);
-        status('Precios y mínimo preparados. Añade la foto y la categoría, revisa los datos y pulsa Guardar producto para publicarlo.');
-        form.scrollIntoView({behavior:'smooth'});
-      });
       $('resetProduct').onclick = () => { $('productForm').reset(); $('formTitle').textContent = 'Nuevo producto'; };
       $('productForm').onsubmit = async event => {
         event.preventDefault(); if (!admin) return;
@@ -259,8 +267,8 @@
       if (adminPage) {
         resetShopForm(); $('rulesNotice').hidden = true;
         $('adminPanel').hidden = !admin; $('adminProducts').replaceChildren(); $('shops').replaceChildren(); $('productForm').reset();
-        if (admin) { showAdminView('home'); status(''); }
-        else { $('calculatorFrame').removeAttribute('src'); $('calculatorPanel').hidden = true; $('productWorkspace').hidden = true; $('shopsView').hidden = true; $('closeCalculator').hidden = true; status(''); }
+        if (admin) { status(''); showAdminView(location.hash === '#calculadora' ? 'calculator' : 'home'); }
+        else { if(calculatorInstance){calculatorInstance.destroy();calculatorInstance=null;} $('calculatorMount').replaceChildren(); document.body.dataset.adminView = ''; $('calculatorPanel').hidden = true; $('productWorkspace').hidden = true; $('shopsView').hidden = true; $('closeCalculator').hidden = true; status(''); }
       } else if (catalogPage) {
         $('grid').replaceChildren(); $('mode').textContent = 'Precios de venta al público.';
       }
