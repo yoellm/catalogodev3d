@@ -1,5 +1,15 @@
 {
   "projects": {
     "default": "savvy-nature-200119"
-  }
+  },
+  "targets": {
+    "savvy-nature-200119": {
+      "database": {
+        "catalogo": [
+          "savvy-nature-200119-default-rtdb"
+        ]
+      }
+    }
+  },
+  "etags": {}
 }
