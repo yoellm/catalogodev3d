@@ -1,0 +1,12 @@
+const assert=require('node:assert/strict');const {appDOM}=require('./helpers/app-dom.cjs');const {wallapopUrl}=require('../catalogo-products.js');
+(async()=>{
+ assert.equal(wallapopUrl('https://es.wallapop.com/item/prueba-123'),'https://es.wallapop.com/item/prueba-123');
+ for(const url of ['javascript:alert(1)','https://wallapop.com.evil.test/item/a','https://wallapop.com@evil.test','https://evil.test','http://wallapop.com/item/a'])assert.equal(wallapopUrl(url),'');
+ const app=await appDOM('catalogo.html');await app.session(null);const products={a:{nombre:'Pieza A',categoria:'Hogar',precio:10,wallapop:'https://es.wallapop.com/item/a'},b:{nombre:'Pieza B',categoria:'Regalos',precio:5},c:{nombre:'Pieza C',categoria:'Hogar',precio:7}};
+ app.emit('dev3dCatalogoPublico',products);assert.equal(app.node('category').querySelectorAll('option').length,3);assert.match(app.node('category').textContent,/Hogar \(2\)/);assert.equal(app.node('grid').querySelectorAll('.wallapop-link').length,1);assert.equal(app.node('grid').querySelector('.wallapop-link').target,'_blank');
+ app.node('category').value='Hogar';app.node('category').dispatchEvent(new app.window.Event('input'));assert.equal(app.node('grid').children.length,2);app.node('search').value='Pieza C';app.node('search').dispatchEvent(new app.window.Event('input'));assert.equal(app.node('grid').children.length,1);app.node('clearCatalogFilters').onclick();assert.equal(app.node('grid').children.length,3);
+ await app.session({uid:'s',email:'s@example.test'});app.emit('dev3dCatalogoPublico',products);app.emit('dev3dTiendas/s',{rol:'tienda',activo:true});assert.equal(app.node('grid').querySelectorAll('.wallapop-link').length,0);
+ const admin=await appDOM('admin.html');await admin.session({uid:'admin',email:'admin@example.test'});const form=admin.node('productForm');for(const [key,value] of Object.entries({nombre:'Pieza',precio:'2',mayorista:'1',minimo:'5',wallapop:'https://es.wallapop.com/item/test'}))form.elements[key].value=value;await admin.submit('productForm');assert.equal(admin.state.writes[0].value['dev3dCatalogoPublico/test-product'].wallapop,'https://es.wallapop.com/item/test');
+ admin.emit('dev3dCatalogoPublico',products);admin.node('adminProducts').querySelector('button').onclick();assert.equal(form.elements.wallapop.value,products.a.wallapop);
+ console.log('PASS: category dropdown counts, combined filters/reset, Wallapop domain validation, public-only links and save/edit persistence.');
+})().catch(error=>{console.error(error);process.exitCode=1;});

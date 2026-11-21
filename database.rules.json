@@ -57,6 +57,9 @@
         },
         "$other": {
           ".validate": false
+        },
+        "wallapop": {
+          ".validate": "newData.isString() && newData.val().length <= 2000 && (newData.val() == '' || newData.val().matches(/^https:\\/\\/([a-zA-Z0-9-]+\\.)*wallapop\\.com(\\/[^ ]*)?$/))"
         }
       }
     },

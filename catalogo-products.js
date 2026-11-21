@@ -1,6 +1,9 @@
 (function(scope){
   'use strict';
   function invalid(field,message){throw Object.assign(new Error(message),{code:'product/invalid-field',field});}
+  function wallapopUrl(value){
+    try{const url=new URL(String(value||'').trim());return url.href.length<=2000&&url.protocol==='https:'&&!url.username&&!url.password&&!url.port&&(url.hostname==='wallapop.com'||url.hostname.endsWith('.wallapop.com'))?url.href:'';}catch{return '';}
+  }
   function validate(values){
     const nombre=String(values.nombre||'').trim(),descripcion=String(values.descripcion||'').trim(),categoria=String(values.categoria||'').trim();
     if(!nombre||nombre.length>150)invalid('nombre','Indica un nombre para el producto (máximo 150 caracteres).');
@@ -12,7 +15,8 @@
       prices[field]=Number(values[field]);if(!Number.isFinite(prices[field])||prices[field]<0)invalid(field,'Revisa '+label+': debe ser un número igual o mayor que cero.');
     }
     const minimo=Number(values.minimo);if(String(values.minimo??'').trim()===''||!Number.isSafeInteger(minimo)||minimo<1)invalid('minimo','El pedido mínimo debe ser un número entero de al menos 1 unidad.');
-    return {nombre,descripcion,categoria,...prices,minimo};
+    const wallapop=String(values.wallapop||'').trim();if(wallapop&&!wallapopUrl(wallapop))invalid('wallapop','Indica un enlace HTTPS válido de Wallapop o deja el campo vacío.');
+    return {nombre,descripcion,categoria,...prices,minimo,wallapop:wallapopUrl(wallapop)};
   }
   function errorMessage(error){
     const code=String(error?.code||'').toLowerCase().replaceAll('_','-');
@@ -26,6 +30,6 @@
     const detail=typeof error?.message==='string' ? error.message : '';
     return 'No se ha podido guardar el producto. '+(detail ? detail+' ' : '')+(code ? 'Código: '+code+'. ' : '')+'Tus datos se mantienen en el formulario para que puedas reintentarlo.';
   }
-  scope.CATALOGO_PRODUCTS=Object.freeze({validate,errorMessage});
-  if(typeof module!=='undefined')module.exports={validate,errorMessage};
+  scope.CATALOGO_PRODUCTS=Object.freeze({validate,errorMessage,wallapopUrl});
+  if(typeof module!=='undefined')module.exports={validate,errorMessage,wallapopUrl};
 })(typeof window==='undefined'?globalThis:window);
