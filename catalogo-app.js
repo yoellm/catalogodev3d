@@ -180,7 +180,7 @@
         image.addEventListener('error',()=>{ photo.replaceChildren(el('span','Fotografía no disponible','image-unavailable')); });
         photo.append(image);
         const body = el('div',undefined,'featured-product-body');
-        body.append(el('span',p.categoria || 'Impresión 3D','tag'),el('h3',p.nombre),el('p',money(p.precio),'featured-price'),el('span','Ver pieza →','featured-action'));
+        body.append(el('span',p.categoria || 'Impresión 3D','tag'),el('h3',p.nombre),el('span','Ver pieza →','featured-action'));
         card.append(photo,body); $('featuredProducts').append(card);
       });
     }
