@@ -1,0 +1,25 @@
+{
+  "database": [
+    {
+      "target": "catalogo",
+      "rules": "database.rules.json"
+    }
+  ],
+  "hosting": {
+    "public": ".",
+    "ignore": [
+      "firebase.json",
+      ".firebaserc",
+      "database.rules.json",
+      "README.md",
+      "package.json",
+      ".gitignore",
+      "*.zip",
+      "scripts/**",
+      "tests/**",
+      "node_modules/**",
+      ".*"
+    ],
+    "target": "catalogo"
+  }
+}
