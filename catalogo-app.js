@@ -19,6 +19,7 @@
   }
   const status = message => { $('status').textContent = message; };
   function el(tag, text, className) { const node = document.createElement(tag); if (text !== undefined) node.textContent = text; if (className) node.className = className; return node; }
+  function productWatermark(container) { const logo=el('img',undefined,'product-watermark');logo.src='logo.png';logo.alt='';container.replaceChildren(logo); }
   function safeUrl(value) { try { const url = new URL(value); return ['https:','http:'].includes(url.protocol) ? url.href : ''; } catch { return ''; } }
   if (window.matchMedia) {
     const menu = $('mainMenu'), content = menu.querySelector('.menu-content');
@@ -226,10 +227,11 @@
       });
       $('grid').replaceChildren();
       items.forEach(([id,p]) => {
-        const card = el('article', undefined,'card'), photo = el('div','3D','photo'), body = el('div',undefined,'card-body');
+        const card = el('article', undefined,'card'), photo = el('div',undefined,'photo'), body = el('div',undefined,'card-body');
         card.id = 'producto-' + id; card.tabIndex = -1;
         const url = safeUrl(p.imagen);
-        if (url) { const image = el('img'); image.src = url; image.alt = p.nombre; image.loading = 'lazy'; image.onerror = () => photo.replaceChildren(el('span','3D')); photo.replaceChildren(image); }
+        if (url) { const image = el('img'); image.src = url; image.alt = p.nombre; image.loading = 'lazy'; image.onerror = () => productWatermark(photo); photo.replaceChildren(image); }
+        else productWatermark(photo);
         const title=el('h2',p.nombre);title.title=p.nombre;
         const preview=el('p',String(p.descripcion||'').replace(/\s+/g,' ').trim(),'description'),details=el('button','Ver detalles','product-details-link'),pricing=el('div',undefined,'catalog-pricing');
         details.type='button';details.setAttribute('aria-label','Ver detalles de '+p.nombre);
