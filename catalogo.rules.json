@@ -58,6 +58,9 @@
         },
         "$other": {
           ".validate": false
+        },
+        "email": {
+          ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 254"
         }
       }
     }

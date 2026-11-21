@@ -51,6 +51,17 @@
       });
       status(items.length ? `${items.length} productos` : 'No hay productos para mostrar.');
     }
+    function resetShopForm() {
+      $('shopForm').reset();
+      $('shopForm').elements.uid.value = '';
+      $('shopCredentials').hidden = false;
+      $('shopForm').elements.email.required = true;
+      $('shopForm').elements.password.required = true;
+      $('shopEditEmail').hidden = true;
+      $('shopFormTitle').textContent = 'Dar de alta una tienda';
+      $('saveShop').textContent = 'Crear tienda';
+      $('shopMessage').textContent = '';
+    }
     function renderAdmin() {
       if (!admin) return;
       $('adminProducts').replaceChildren();
@@ -62,7 +73,7 @@
         row.append(edit,remove); $('adminProducts').append(row);
       });
       $('shops').replaceChildren();
-      Object.entries(shops).forEach(([uid,s]) => { const row = el('div',undefined,'admin-row'), edit = el('button','Editar acceso'); row.append(el('strong',s.nombre),el('p',s.activo ? 'Tienda autorizada' : 'Acceso desactivado')); edit.onclick = () => { const f = $('shopForm'); f.elements.uid.value = uid; f.elements.nombre.value = s.nombre; f.elements.activo.value = String(s.activo); f.scrollIntoView({behavior:'smooth'}); }; row.append(edit); $('shops').append(row); });
+      Object.entries(shops).forEach(([uid,s]) => { const row = el('div',undefined,'admin-row'), edit = el('button','Editar acceso'); row.append(el('strong',s.nombre),el('p',(s.email ? s.email + ' · ' : '') + (s.activo ? 'Tienda autorizada' : 'Acceso desactivado'))); edit.onclick = () => { resetShopForm(); const f = $('shopForm'); f.elements.uid.value = uid; f.elements.nombre.value = s.nombre; f.elements.activo.value = String(s.activo); $('shopCredentials').hidden = true; f.elements.email.required = false; f.elements.password.required = false; $('shopEditEmail').hidden = false; $('shopEditEmail').textContent = s.email || 'Cuenta ya autorizada'; $('shopFormTitle').textContent = 'Editar acceso de tienda'; $('saveShop').textContent = 'Guardar acceso'; f.scrollIntoView({behavior:'smooth'}); }; row.append(edit); $('shops').append(row); });
     }
     if (!adminPage) ['search','category','sort'].forEach(id => $(id).addEventListener('input', render));
     if (adminPage) {
@@ -106,13 +117,37 @@
         } catch (error) { status(error.message?.startsWith('Elige') || error.message?.startsWith('La URL') ? error.message : 'No se pudo guardar. Comprueba la conexión y tus permisos.'); }
         finally { $('saveProduct').disabled = false; }
       };
-      $('shopForm').onsubmit = async event => { event.preventDefault(); if (!admin) return; const f = event.currentTarget; const button = f.querySelector('button'); button.disabled = true; try { await database.set(path(`dev3dTiendas/${f.elements.uid.value.trim()}`),{rol:'tienda',nombre:f.elements.nombre.value.trim(),activo:f.elements.activo.value === 'true'}); status('Acceso de tienda guardado.'); f.reset(); } catch { status('No se pudo guardar el acceso de la tienda.'); } finally { button.disabled = false; } };
+      $('resetShop').onclick = () => resetShopForm();
+      $('shopForm').onsubmit = async event => {
+        event.preventDefault(); if (!admin) return;
+        const f = event.currentTarget, fields = f.elements, editUid = fields.uid.value;
+        if (!f.reportValidity() || !fields.nombre.value.trim()) return;
+        const button = $('saveShop'); button.disabled = true; $('resetShop').disabled = true;
+        const profile = {nombre:fields.nombre.value.trim(),activo:fields.activo.value === 'true'};
+        $('shopMessage').textContent = editUid ? 'Guardando acceso…' : 'Creando cuenta y autorizando tienda…';
+        try {
+          if (editUid) {
+            await database.update(path('dev3dTiendas/' + editUid), profile);
+          } else {
+            if (window.CATALOGO_CONFIG.ADMIN_EMAILS.includes(fields.email.value.trim().toLowerCase())) throw Object.assign(new Error('Utiliza el correo de la tienda, no una cuenta de administrador.'),{code:'shop/admin-email'});
+            const sessionUid = currentUser.uid;
+            await window.CATALOGO_SHOPS.createShop({appSDK,authSDK:authentication,config:window.CATALOGO_CONFIG.firebaseConfig,email:fields.email.value,password:fields.password.value,profile,saveProfile:async (uid,data) => {
+              if (!admin || currentUser?.uid !== sessionUid) throw new Error('La sesión de administrador ha cambiado.');
+              await database.update(path('dev3dTiendas/' + uid),data);
+            }});
+          }
+          resetShopForm();
+          $('shopMessage').textContent = editUid ? 'Acceso actualizado.' : 'Tienda creada. ' + (profile.activo ? 'Ya puede iniciar sesión con el correo y la contraseña que has indicado.' : 'Su acceso mayorista está desactivado hasta que lo autorices.');
+        } catch(error) { $('shopMessage').textContent = window.CATALOGO_SHOPS.errorMessage(error); }
+        finally { fields.password.value = ''; button.disabled = false; $('resetShop').disabled = false; }
+      };
     }
     authentication.onAuthStateChanged(auth, async user => {
       const version = ++generation; resetSubscriptions(); currentUser = user; wholesale = {}; publicProducts = {}; shops = {}; admin = !!user && window.CATALOGO_CONFIG.ADMIN_EMAILS.includes(user.email?.toLowerCase());
       $('identity').textContent = user ? 'Sesión iniciada' : 'Catálogo público'; $('logout').hidden = !user; $('loginOpen').hidden = !!user;
       if ($('adminLink')) $('adminLink').hidden = !admin;
       if (adminPage) {
+        resetShopForm();
         $('rulesNotice').hidden = true;
         if (!admin) { $('calculatorFrame').removeAttribute('src'); $('calculatorPanel').hidden = true; $('productWorkspace').hidden = false; $('closeCalculator').hidden = true; $('openCalculator').hidden = false; }
         $('adminPanel').hidden = !admin; $('adminProducts').replaceChildren(); $('shops').replaceChildren(); $('productForm').reset(); status(admin ? 'Gestión privada del catálogo.' : 'Acceso exclusivo para administradores.'); if (!admin) return; }

@@ -33,6 +33,7 @@ function node(id){return nodes[id] ||= {hidden:false,value:'',textContent:'',att
 const form=node('productForm');
 form.elements=Object.fromEntries(['id','nombre','descripcion','categoria','imagen','precio','mayorista','minimo'].map(k=>[k,{value:''}]));
 form.reset=()=>Object.values(form.elements).forEach(e=>e.value='');
+const shopForm=node('shopForm'); shopForm.elements=Object.fromEntries(['uid','nombre','email','password','activo'].map(k=>[k,{value:'',required:false}])); shopForm.reset=()=>{}; shopForm.reportValidity=()=>true;
 const frame=node('calculatorFrame'); frame.contentWindow={};
 let authCallback, messageHandler, writes=0;
 const database={getDatabase:()=>({}),ref:(_,name)=>name,onValue:()=>()=>{},update:()=>{writes++;},set:()=>{writes++;}};
@@ -49,5 +50,15 @@ messageHandler({origin:'https://yoellm.github.io',source:frame.contentWindow,dat
 assert.equal(form.elements.nombre.value,'Llavero'); assert.equal(form.elements.precio.value,2); assert.equal(form.elements.mayorista.value,1.46); assert.equal(form.elements.minimo.value,10); assert.equal(form.elements.id.value,''); assert.equal(node('calculatorPanel').hidden,true); assert.equal(writes,0);
 await authCallback(null); assert.equal(frame.getAttribute('src'),null); assert.equal(node('adminPanel').hidden,true);
 messageHandler({origin:'https://yoellm.github.io',source:frame.contentWindow,data:received.data}); assert.equal(writes,0);
+let helperCalls=0, profileWrite;
+database.update=async(path,data)=>{writes++;profileWrite={path,data};};
+windowMock.CATALOGO_SHOPS={errorMessage:()=> 'error',createShop:async args=>{helperCalls++;assert.equal(args.email,'shop@example.test');assert.equal(args.password,'test-password-only');await args.saveProfile('shop-created',{rol:'tienda',nombre:'Tienda nueva',activo:true,email:'shop@example.test'});}};
+await shopForm.onsubmit({preventDefault(){},currentTarget:shopForm});assert.equal(helperCalls,0);
+await authCallback({uid:'admin',email:'admin@example.test'});
+Object.assign(shopForm.elements.nombre,{value:'Tienda nueva'});Object.assign(shopForm.elements.email,{value:'shop@example.test'});Object.assign(shopForm.elements.password,{value:'test-password-only'});Object.assign(shopForm.elements.activo,{value:'true'});
+await shopForm.onsubmit({preventDefault(){},currentTarget:shopForm});assert.equal(helperCalls,1);assert.equal(profileWrite.path,'dev3dTiendas/shop-created');assert.equal(profileWrite.data.password,undefined);assert.equal(shopForm.elements.password.value,'');assert.equal(node('saveShop').disabled,false);
+shopForm.elements.uid.value='old-shop';shopForm.elements.nombre.value='Nombre editado';shopForm.elements.activo.value='false';
+await shopForm.onsubmit({preventDefault(){},currentTarget:shopForm});assert.equal(helperCalls,1);assert.equal(profileWrite.path,'dev3dTiendas/old-shop');assert.equal(profileWrite.data.activo,false);assert.equal(profileWrite.data.email,undefined);
+console.log('PASS: alta web solo de administrador, autorización y edición de tienda, contraseña vaciada.');
 console.log('PASS: cálculos, IVA, mínimo, precio fijo, borrador directo/tienda, validación, origen, administrador, cierre de sesión y ausencia de publicación automática.');
 })().catch(error=>{console.error(error);process.exitCode=1;});

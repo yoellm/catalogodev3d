@@ -18,7 +18,7 @@ Se comparten el proyecto Firebase, la instancia de base de datos, Authentication
 
 - index.html: catálogo público y acceso para tiendas.
 - admin.html: gestión privada de productos, fotografías, precios y mínimos; autorización y revocación de tiendas.
-- Crear las cuentas de tienda en Firebase Authentication (Email/Password), copiar el UID y autorizarlo en el panel. No se concede acceso al inventario por tener rol tienda.
+- En administración, usa Dar de alta una tienda e indica nombre, correo y contraseña inicial. El panel crea la cuenta y autoriza su acceso sin entrar en Firebase ni cerrar la sesión del administrador. No se concede acceso al inventario por tener rol tienda.
 - Los administradores se configuran tanto en firebase-config.js como en catalogo.rules.json.
 - Vista local: python -m http.server 8080, y abrir http://localhost:8080.
 
@@ -61,3 +61,12 @@ En admin.html, inicia sesión como administrador y pulsa Calculadora de costes y
 Preparar producto en catálogo devuelve un borrador al formulario: nombre, PVP, precio mayorista y mínimo, con IVA según lo configurado en la calculadora. En venta a tienda se usa el PVP evaluado y en directa el precio directo; el mayorista se calcula con los ajustes para tiendas. Revisa precios, impuestos, categoría y fotografía y pulsa Guardar producto para publicarlo. No se guardan costes ni beneficios internos en las ramas públicas. El mínimo no aplica descuento unitario.
 
 La calculadora se carga dentro del panel únicamente tras verificar el administrador. El HTML y JavaScript estáticos son públicos en GitHub Pages; no contienen datos privados del negocio. El control de escritura de productos y lectura de tarifas depende de las reglas Firebase.
+
+
+## Alta de tiendas desde la web
+
+En admin.html, Dar de alta una tienda pide nombre, correo y contraseña inicial (mínimo 8 caracteres y requisitos adicionales de la política Firebase, si existen). La contraseña se utiliza únicamente para crear o comprobar la cuenta en Firebase Authentication; no se guarda en Realtime Database ni se incluye en los perfiles. El administrador debe facilitar las credenciales a la tienda; no se envían correos automáticos.
+
+Si el correo ya tiene cuenta, introduce su contraseña actual para verificarla y autorizar ese usuario. Editar acceso permite cambiar nombre y estado sin conocer la contraseña ni modificarla. La creación utiliza una aplicación Firebase secundaria con sesión solo en memoria, que se cierra al terminar; no sustituye la sesión del administrador. Si falla guardar permisos se intenta deshacer únicamente la cuenta recién creada; no se eliminan cuentas existentes. Si no se puede deshacer, se puede repetir el alta con el mismo correo y contraseña para completar la autorización.
+
+Las reglas mantienen la escritura de dev3dTiendas limitada a los administradores. Crear una cuenta de Authentication no concede por sí solo acceso mayorista. Los perfiles admiten correo opcional para mantener la compatibilidad con tiendas anteriores.
