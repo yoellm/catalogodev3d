@@ -213,16 +213,28 @@
       $('category').replaceChildren(new Option('Todas las categorías',''), ...categories.map(c => new Option(c,c)));
       $('category').value = categories.includes(selected) ? selected : '';
       const items = Object.entries(publicProducts).filter(([,p]) => (!selected || p.categoria === selected) && `${p.nombre} ${p.descripcion || ''}`.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().includes(query));
-      const price = ([id,p]) => wholesale[id]?.precio ?? p.precio;
-      items.sort((a,b) => $('sort').value === 'name' ? a[1].nombre.localeCompare(b[1].nombre,'es') : ($('sort').value === 'asc' ? 1 : -1) * (price(a)-price(b)));
+      const shopView=currentShopProfile?.rol==='tienda'&&currentShopProfile.activo===true;
+      const checkingShop=!!currentUser&&!admin&&currentShopProfile===null;
+      const validTrade = trade => Number.isFinite(trade?.precio)&&trade.precio>=0&&Number.isSafeInteger(trade?.minimo)&&trade.minimo>=1;
+      const price = ([id,p]) => shopView ? (validTrade(wholesale[id])?wholesale[id].precio:null) : wholesale[id]?.precio ?? p.precio;
+      items.sort((a,b) => {
+        if($('sort').value==='name')return a[1].nombre.localeCompare(b[1].nombre,'es');
+        const x=price(a),y=price(b);if(x===null||y===null)return x===y?0:x===null?1:-1;
+        return ($('sort').value==='asc'?1:-1)*(x-y);
+      });
       $('grid').replaceChildren();
       items.forEach(([id,p]) => {
         const card = el('article', undefined,'card'), photo = el('div','3D','photo'), body = el('div',undefined,'card-body');
         card.id = 'producto-' + id; card.tabIndex = -1;
         const url = safeUrl(p.imagen);
         if (url) { const image = el('img'); image.src = url; image.alt = p.nombre; image.loading = 'lazy'; image.onerror = () => photo.replaceChildren(el('span','3D')); photo.replaceChildren(image); }
-        body.append(el('span',p.categoria || 'Impresión 3D','tag'),el('h2',p.nombre),el('p',p.descripcion || '', 'description'),el('p',money(p.precio),'price'),el('small','Precio de venta al público'));
-        if (wholesale[id]) { const box = el('div',undefined,'wholesale'); box.append(el('strong',`${money(wholesale[id].precio)} / unidad`),el('p',`Precio mayorista · Mínimo: ${wholesale[id].minimo} unidades`)); body.append(box); }
+        body.append(el('span',p.categoria || 'Impresión 3D','tag'),el('h2',p.nombre),el('p',p.descripcion || '', 'description'));
+        if(!shopView&&!checkingShop)body.append(el('p',money(p.precio),'price'),el('small','Precio de venta al público'));
+        if(validTrade(wholesale[id])){
+          const trade=wholesale[id],total=Math.round(trade.precio*100)*trade.minimo/100,box=el('div',undefined,'wholesale');
+          box.append(el('strong',money(trade.precio)+' / unidad','wholesale-unit'),el('p','Pedido mínimo: '+trade.minimo+(trade.minimo===1?' unidad':' unidades'),'wholesale-minimum'),el('span','Total del pedido mínimo','wholesale-total-label'),el('strong',money(total),'wholesale-total'));
+          body.append(box);
+        }else if(shopView||checkingShop)body.append(el('p',checkingShop?'Comprobando tus condiciones…':'Precio mayorista pendiente de configurar. Consúltanos para este producto.','wholesale-pending'));
         card.append(photo,body); $('grid').append(card);
       });
       status(items.length ? `${items.length} productos` : 'No hay productos para mostrar.');
@@ -428,7 +440,7 @@
           if(shopPage)syncShopEmail(profile);
           if (catalogPage) {
             render();
-            $('mode').textContent = role === 'shop' ? 'Tu tarifa de tienda está activa. Consulta el precio mayorista y el mínimo de cada producto.' : 'Tu cuenta no tiene acceso mayorista. Contacta con DEV3D Studio para solicitarlo.';
+            $('mode').textContent = role === 'shop' ? 'Precios mayoristas por unidad y total del pedido mínimo de cada producto.' : 'Tu cuenta no tiene acceso mayorista. Contacta con DEV3D Studio para solicitarlo.';
             if (role === 'shop') tradeStop = database.onValue(path('dev3dCatalogoMayorista'), snap => { if (version === generation) { wholesale = snap.val() || {}; render(); } }, () => { if (version === generation) { wholesale = {}; render(); status('No se pudieron consultar tus precios mayoristas.'); } });
           }
         });

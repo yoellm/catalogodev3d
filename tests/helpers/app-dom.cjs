@@ -18,7 +18,7 @@ async function appDOM(page,media){
  window.CATALOGO_HOME=require('../../catalogo-home.js');window.CATALOGO_BOOT={loadFirebase:async()=>[{initializeApp:()=>({})},database,authentication,{getStorage:()=>({}),ref:(_,name)=>name,uploadBytes:async(...args)=>{if(state.upload)return state.upload(...args);throw Error('Unexpected image upload');},getDownloadURL:async()=> 'https://example.test/photo.webp'}]};
  if(media)window.matchMedia=()=>media;
  const navigator={onLine:true};
- await vm.runInNewContext(fs.readFileSync(path.join(root,'catalogo-app.js'),'utf8'),{window,document,navigator,location:{origin:'https://example.test',hash:'',replace(){},assign(){}},URL,Intl,console,setTimeout,clearTimeout,confirm:()=>state.confirm});
+ await vm.runInNewContext(fs.readFileSync(path.join(root,'catalogo-app.js'),'utf8'),{window,document,navigator,location:{origin:'https://example.test',hash:'',replace(){},assign(){}},URL,Intl,Option:function(text,value){const option=document.createElement('option');option.textContent=text;option.value=value;return option;},console,setTimeout,clearTimeout,confirm:()=>state.confirm});
  return {window,document,state,navigator,node:id=>document.getElementById(id),async session(user){state.user=user;await state.authCallback(user);},emit(name,value){const sub=state.subscriptions.findLast(s=>s.name===name&&s.active);if(!sub)throw Error('No subscription: '+name);sub.callback({val:()=>value});},async submit(id){const form=document.getElementById(id);await form.onsubmit({preventDefault(){},currentTarget:form});}};
 }
 module.exports={appDOM};

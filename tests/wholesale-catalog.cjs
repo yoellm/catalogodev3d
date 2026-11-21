@@ -1,0 +1,11 @@
+const assert=require('node:assert/strict');const {appDOM}=require('./helpers/app-dom.cjs');
+(async()=>{
+ const app=await appDOM('catalogo.html');const products={a:{nombre:'Pieza A',descripcion:'Prueba',categoria:'Figuras',precio:99.99,imagen:''},b:{nombre:'Pieza B',descripcion:'',precio:55,imagen:''}};
+ await app.session(null);app.emit('dev3dCatalogoPublico',products);assert.match(app.node('grid').textContent,/Precio de venta al público/);assert.equal(app.node('grid').querySelectorAll('.price').length,2);
+ await app.session({uid:'s',email:'shop@example.test'});app.emit('dev3dCatalogoPublico',products);assert.equal(app.node('grid').querySelectorAll('.price').length,0);assert.match(app.node('grid').textContent,/Comprobando/);
+ app.emit('dev3dTiendas/s',{rol:'tienda',activo:true});assert.equal(app.node('grid').querySelectorAll('.price').length,0);
+ app.emit('dev3dCatalogoMayorista',{a:{precio:7.5,minimo:5}});const card=app.node('grid').querySelector('#producto-a');assert.match(card.querySelector('.wholesale-unit').textContent,/7,50.*unidad/);assert.equal(card.querySelector('.wholesale-total').textContent,new Intl.NumberFormat('es-ES',{style:'currency',currency:'EUR'}).format(37.5));assert.match(card.textContent,/5 unidades/);assert(!app.node('grid').textContent.includes('Precio de venta al público'));assert(!app.node('grid').textContent.includes('99,99'));assert.match(app.node('grid').querySelector('#producto-b').textContent,/pendiente de configurar/);
+ app.emit('dev3dCatalogoMayorista',{a:{precio:0.1,minimo:3},b:{precio:2,minimo:1}});assert.match(card.textContent,/5 unidades/);const current=app.node('grid').querySelector('#producto-a');assert.equal(current.querySelector('.wholesale-total').textContent,new Intl.NumberFormat('es-ES',{style:'currency',currency:'EUR'}).format(.3));assert.match(app.node('grid').querySelector('#producto-b').textContent,/1 unidad/);
+ app.emit('dev3dTiendas/s',{rol:'tienda',activo:false});assert.equal(app.node('grid').querySelectorAll('.wholesale-total').length,0);assert.equal(app.node('grid').querySelectorAll('.price').length,2);
+ console.log('PASS: public prices retained for visitors, hidden for stores even while loading/missing rates, unit and minimum totals, decimal rounding and access revocation.');
+})().catch(error=>{console.error(error);process.exitCode=1;});
