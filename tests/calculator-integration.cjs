@@ -38,7 +38,7 @@ const frame=node('calculatorFrame'); frame.contentWindow={};
 let authCallback, messageHandler, writes=0;
 const database={getDatabase:()=>({}),ref:(_,name)=>name,onValue:()=>()=>{},update:()=>{writes++;},set:()=>{writes++;}};
 const auth={getAuth:()=>({}),onAuthStateChanged:(_,fn)=>authCallback=fn};
-const windowMock={CATALOGO_DRAFT:{validateDraft},CATALOGO_CONFIG:{firebaseConfig:{databaseURL:'https://example.test'},ADMIN_EMAILS:['admin@example.test']},CATALOGO_BOOT:{loadFirebase:async()=>[{initializeApp:()=>({})},database,auth,{getStorage:()=>({})}]},addEventListener:(type,fn)=>{if(type==='message')messageHandler=fn;}};
+const windowMock={CATALOGO_NAVIGATION:require('../catalogo-navigation.js'),CATALOGO_DRAFT:{validateDraft},CATALOGO_CONFIG:{firebaseConfig:{databaseURL:'https://example.test'},ADMIN_EMAILS:['admin@example.test']},CATALOGO_BOOT:{loadFirebase:async()=>[{initializeApp:()=>({})},database,auth,{getStorage:()=>({})}]},addEventListener:(type,fn)=>{if(type==='message')messageHandler=fn;}};
 (async()=>{
 const source=fs.readFileSync(path.join(root,'catalogo-app.js'),'utf8');
 await vm.runInNewContext(source,{document:{body:{dataset:{admin:'true'}},getElementById:node},window:windowMock,location:{origin:'https://yoellm.github.io'},Intl,URL,console,confirm:()=>true});

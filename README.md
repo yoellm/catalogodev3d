@@ -70,3 +70,14 @@ En admin.html, Dar de alta una tienda pide nombre, correo y contraseña inicial 
 Si el correo ya tiene cuenta, introduce su contraseña actual para verificarla y autorizar ese usuario. Editar acceso permite cambiar nombre y estado sin conocer la contraseña ni modificarla. La creación utiliza una aplicación Firebase secundaria con sesión solo en memoria, que se cierra al terminar; no sustituye la sesión del administrador. Si falla guardar permisos se intenta deshacer únicamente la cuenta recién creada; no se eliminan cuentas existentes. Si no se puede deshacer, se puede repetir el alta con el mismo correo y contraseña para completar la autorización.
 
 Las reglas mantienen la escritura de dev3dTiendas limitada a los administradores. Crear una cuenta de Authentication no concede por sí solo acceso mayorista. Los perfiles admiten correo opcional para mantener la compatibilidad con tiendas anteriores.
+
+
+## Menú y espacios por usuario
+
+El menú de la cabecera contiene un inicio de sesión común. Tras entrar, el administrador pasa automáticamente a admin.html y una tienda activa a tienda.html. Una cuenta sin autorización se mantiene en el catálogo público. La sesión guardada se reutiliza entre estas páginas.
+
+El panel de administración se abre con tarjetas: Gestión del catálogo, Calculadora y Tiendas, más un espacio informativo para futuras herramientas. Cada tarjeta abre su sección y Volver al panel regresa al inicio. La calculadora se carga al abrir su tarjeta y sus borradores abren directamente Gestión del catálogo.
+
+El menú de una tienda contiene Mi tienda, Catálogo mayorista, Mi cuenta y Cerrar sesión. Mi tienda muestra su perfil; los precios y mínimos se consultan en el catálogo. El menú se actualiza al revocar el acceso o cerrar sesión. Los permisos de Firebase siguen siendo la protección de datos y no cambian con esta reorganización.
+
+Validación: tests/navigation.cjs comprueba rutas de acceso, menús por rol, tarjetas y secciones, revocación y cierre de sesión; se conservan las pruebas de calculadora y alta de tiendas.

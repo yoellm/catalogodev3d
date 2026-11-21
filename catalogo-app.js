@@ -2,12 +2,61 @@
   'use strict';
   const $ = id => document.getElementById(id);
   const adminPage = document.body.dataset.admin === 'true';
+  const shopPage = document.body.dataset.shop === 'true';
   const money = value => new Intl.NumberFormat('es-ES', {style:'currency',currency:'EUR'}).format(value);
   let publicProducts = {}, wholesale = {}, shops = {}, currentUser = null, admin = false, generation = 0;
-  let subscriptions = [];
+  let subscriptions = [], tradeStop = null;
   const status = message => { $('status').textContent = message; };
   function el(tag, text, className) { const node = document.createElement(tag); if (text !== undefined) node.textContent = text; if (className) node.className = className; return node; }
   function safeUrl(value) { try { const url = new URL(value); return ['https:','http:'].includes(url.protocol) ? url.href : ''; } catch { return ''; } }
+  function setSessionUI(role, profile = {}) {
+    document.body.dataset.role = role;
+    $('identity').textContent = role === 'admin' ? 'Administrador' : role === 'shop' ? (profile.nombre || 'Cuenta de tienda') : currentUser ? 'Cuenta sin acceso mayorista' : 'Explora nuestro catálogo';
+    $('menuLabel').textContent = role === 'admin' ? 'Administración' : role === 'shop' ? 'Mi tienda' : 'Menú';
+    $('adminLink').hidden = role !== 'admin';
+    $('menuCatalog').hidden = role === 'shop';
+    $('headerCatalog').textContent = role === 'shop' ? 'Catálogo mayorista' : 'Catálogo';
+    for (const id of ['shopLink','shopCatalogLink','shopAccountLink']) $(id).hidden = role !== 'shop';
+    $('loginOpen').hidden = !!currentUser;
+    $('logout').hidden = !currentUser;
+    if (adminPage) {
+      $('adminGate').hidden = role === 'admin';
+      $('adminGateMessage').textContent = currentUser ? 'Este panel es exclusivo del administrador. Puedes acceder a tu espacio desde el menú.' : 'Inicia sesión para gestionar tu catálogo, tus tiendas y tus precios.';
+      $('gateShopLink').hidden = role !== 'shop';
+      $('gateLogin').hidden = !!currentUser;
+    }
+    if (shopPage) {
+      $('shopDashboard').hidden = role !== 'shop';
+      $('shopGate').hidden = role === 'shop';
+      $('gateLogin').hidden = !!currentUser;
+      $('shopGateMessage').textContent = currentUser ? 'Tu cuenta no tiene acceso mayorista activo. Contacta con DEV3D Studio para activarlo.' : 'Inicia sesión para consultar tus condiciones mayoristas.';
+      if (role !== 'shop') { $('shopWelcome').textContent = ''; $('shopAccountName').textContent = ''; $('shopAccountEmail').textContent = ''; }
+      if (role === 'shop') {
+        $('shopWelcome').textContent = 'Hola, ' + (profile.nombre || 'tienda');
+        $('shopAccountName').textContent = profile.nombre || 'Tu tienda';
+        $('shopAccountEmail').textContent = currentUser?.email || '';
+      }
+    }
+  }
+  function showAdminView(view) {
+    if (!admin || !adminPage) return;
+    if (!['home','catalog','shops','calculator'].includes(view)) view = 'home';
+    $('adminDashboard').hidden = view !== 'home';
+    $('catalogView').hidden = view !== 'catalog';
+    $('productWorkspace').hidden = view !== 'catalog';
+    $('shopsView').hidden = view !== 'shops';
+    $('calculatorPanel').hidden = view !== 'calculator';
+    $('closeCalculator').hidden = view === 'home';
+    const content = {
+      home:['Panel de administración','Elige qué quieres hacer. Todas tus herramientas, en un solo lugar.'],
+      catalog:['Gestión del catálogo','Añade productos, fotografías y precios para particulares y tiendas.'],
+      shops:['Gestión de tiendas','Crea cuentas y gestiona el acceso a tus precios mayoristas.'],
+      calculator:['Calculadora de precios','Calcula tus costes y convierte el resultado en un nuevo producto.']
+    }[view];
+    $('viewTitle').textContent = content[0]; $('viewDescription').textContent = content[1];
+    if (view === 'calculator' && !$('calculatorFrame').getAttribute('src')) $('calculatorFrame').src = 'calculadora/index.html?v=1';
+    $('viewTitle').focus?.({preventScroll:true});
+  }
   try {
     const databaseURL = window.CATALOGO_CONFIG?.firebaseConfig?.databaseURL;
     if (!databaseURL) { status('Falta configurar la base de datos del catálogo en firebase-config.js.'); return; }
@@ -20,17 +69,29 @@
       if (adminPage && admin && denied) $('rulesNotice').hidden = false;
       status(adminPage ? 'No se pudieron cargar los datos. Comprueba la conexión y las reglas de acceso del catálogo.' : 'El catálogo no está disponible en este momento. Inténtalo de nuevo más tarde.');
     })); };
-    function resetSubscriptions() { subscriptions.forEach(stop => stop()); subscriptions = []; }
-    $('loginOpen').onclick = () => $('loginDialog').showModal();
+    function resetSubscriptions() { subscriptions.forEach(stop => stop()); subscriptions = []; if (tradeStop) { tradeStop(); tradeStop = null; } }
+    function openLogin() { $('mainMenu').open = false; $('loginError').textContent = ''; $('loginDialog').showModal(); }
+    $('loginOpen').onclick = openLogin;
+    if (adminPage || shopPage) $('gateLogin').onclick = openLogin;
+    document.addEventListener?.('click', event => { const menu = $('mainMenu'); if (menu.open && !menu.contains(event.target)) menu.open = false; });
+    window.addEventListener('keydown', event => { if (event.key === 'Escape') $('mainMenu').open = false; });
     $('loginClose').onclick = () => $('loginDialog').close();
     $('loginForm').onsubmit = async event => {
       event.preventDefault(); const form = event.currentTarget, button = form.querySelector('button'); button.disabled = true; $('loginError').textContent = '';
-      try { await authentication.signInWithEmailAndPassword(auth, form.elements.email.value.trim(), form.elements.password.value); form.reset(); $('loginDialog').close(); }
+      try {
+        const result = await authentication.signInWithEmailAndPassword(auth, form.elements.email.value.trim(), form.elements.password.value);
+        let profile = null;
+        if (!window.CATALOGO_CONFIG.ADMIN_EMAILS.includes(result.user.email?.toLowerCase())) profile = (await database.get(path('dev3dTiendas/' + result.user.uid))).val();
+        const role = window.CATALOGO_NAVIGATION.roleFor(result.user,profile,window.CATALOGO_CONFIG.ADMIN_EMAILS);
+        form.reset(); $('loginDialog').close();
+        location.assign(window.CATALOGO_NAVIGATION.destinationFor(role));
+      }
       catch { $('loginError').textContent = 'No se pudo iniciar sesión. Revisa tus credenciales y la conexión.'; }
       finally { button.disabled = false; }
     };
     $('logout').onclick = async () => { try { await authentication.signOut(auth); } catch { status('No se pudo cerrar la sesión. Inténtalo de nuevo.'); } };
     function render() {
+      if (shopPage) { status(''); return; }
       if (adminPage) { renderAdmin(); return; }
       const query = $('search').value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
       const selected = $('category').value;
@@ -64,29 +125,28 @@
     }
     function renderAdmin() {
       if (!admin) return;
+      $('dashboardProducts').textContent = Object.keys(publicProducts).length + ' productos';
+      $('dashboardShops').textContent = Object.keys(shops).length + ' tiendas';
       $('adminProducts').replaceChildren();
       Object.entries(publicProducts).forEach(([id,p]) => {
         const row = el('div',undefined,'admin-row'), edit = el('button','Editar'), remove = el('button','Eliminar','secondary');
         row.append(el('strong',p.nombre),el('p',`Público: ${money(p.precio)} · Mayorista: ${wholesale[id] ? money(wholesale[id].precio) : 'Sin configurar'} · Mínimo: ${wholesale[id]?.minimo ?? '?'}`));
         edit.onclick = () => { const f = $('productForm'); f.reset(); for (const key of ['nombre','descripcion','categoria','imagen','precio']) f.elements[key].value = p[key] ?? ''; f.elements.id.value = id; f.elements.mayorista.value = wholesale[id]?.precio ?? ''; f.elements.minimo.value = wholesale[id]?.minimo ?? 1; $('formTitle').textContent = 'Editar producto'; f.scrollIntoView({behavior:'smooth'}); };
-        remove.onclick = async () => { if (!confirm(`¿Eliminar ?${p.nombre}? del catálogo…`)) return; try { await database.update(path(''),{[`dev3dCatalogoPublico/${id}`]:null,[`dev3dCatalogoMayorista/${id}`]:null}); } catch { status('No se pudo eliminar el producto.'); } };
+        remove.onclick = async () => { if (!confirm(`¿Eliminar «${p.nombre}» del catálogo?`)) return; try { await database.update(path(''),{[`dev3dCatalogoPublico/${id}`]:null,[`dev3dCatalogoMayorista/${id}`]:null}); } catch { status('No se pudo eliminar el producto.'); } };
         row.append(edit,remove); $('adminProducts').append(row);
       });
+      if (!Object.keys(publicProducts).length) $('adminProducts').append(el('p','Todavía no hay productos. Crea el primero desde el formulario.','empty-list'));
       $('shops').replaceChildren();
+      if (!Object.keys(shops).length) $('shops').append(el('p','Todavía no hay tiendas. Da de alta la primera desde el formulario.','empty-list'));
       Object.entries(shops).forEach(([uid,s]) => { const row = el('div',undefined,'admin-row'), edit = el('button','Editar acceso'); row.append(el('strong',s.nombre),el('p',(s.email ? s.email + ' · ' : '') + (s.activo ? 'Tienda autorizada' : 'Acceso desactivado'))); edit.onclick = () => { resetShopForm(); const f = $('shopForm'); f.elements.uid.value = uid; f.elements.nombre.value = s.nombre; f.elements.activo.value = String(s.activo); $('shopCredentials').hidden = true; f.elements.email.required = false; f.elements.password.required = false; $('shopEditEmail').hidden = false; $('shopEditEmail').textContent = s.email || 'Cuenta ya autorizada'; $('shopFormTitle').textContent = 'Editar acceso de tienda'; $('saveShop').textContent = 'Guardar acceso'; f.scrollIntoView({behavior:'smooth'}); }; row.append(edit); $('shops').append(row); });
     }
     if (!adminPage) ['search','category','sort'].forEach(id => $(id).addEventListener('input', render));
     if (adminPage) {
-      function showCalculator(open) {
-        if (!admin) return;
-        $('calculatorPanel').hidden = !open;
-        $('productWorkspace').hidden = open;
-        $('closeCalculator').hidden = !open;
-        $('openCalculator').hidden = open;
-        if (open && !$('calculatorFrame').getAttribute('src')) $('calculatorFrame').src = 'calculadora/index.html?v=1';
-      }
+      function showCalculator(open) { showAdminView(open ? 'calculator' : 'catalog'); }
+      $('goCatalog').onclick = () => showAdminView('catalog');
+      $('goShops').onclick = () => showAdminView('shops');
       $('openCalculator').onclick = () => showCalculator(true);
-      $('closeCalculator').onclick = () => showCalculator(false);
+      $('closeCalculator').onclick = () => showAdminView('home');
       window.addEventListener('message', event => {
         if (!admin || event.origin !== location.origin || event.source !== $('calculatorFrame').contentWindow) return;
         const draft = window.CATALOGO_DRAFT.validateDraft(event.data);
@@ -143,30 +203,39 @@
       };
     }
     authentication.onAuthStateChanged(auth, async user => {
-      const version = ++generation; resetSubscriptions(); currentUser = user; wholesale = {}; publicProducts = {}; shops = {}; admin = !!user && window.CATALOGO_CONFIG.ADMIN_EMAILS.includes(user.email?.toLowerCase());
-      $('identity').textContent = user ? 'Sesión iniciada' : 'Catálogo público'; $('logout').hidden = !user; $('loginOpen').hidden = !!user;
-      if ($('adminLink')) $('adminLink').hidden = !admin;
+      const version = ++generation;
+      resetSubscriptions(); currentUser = user; wholesale = {}; publicProducts = {}; shops = {};
+      admin = window.CATALOGO_NAVIGATION.roleFor(user,null,window.CATALOGO_CONFIG.ADMIN_EMAILS) === 'admin';
+      setSessionUI(admin ? 'admin' : user ? 'member' : 'public');
+      if (shopPage && admin) { location.replace('admin.html'); return; }
       if (adminPage) {
-        resetShopForm();
-        $('rulesNotice').hidden = true;
-        if (!admin) { $('calculatorFrame').removeAttribute('src'); $('calculatorPanel').hidden = true; $('productWorkspace').hidden = false; $('closeCalculator').hidden = true; $('openCalculator').hidden = false; }
-        $('adminPanel').hidden = !admin; $('adminProducts').replaceChildren(); $('shops').replaceChildren(); $('productForm').reset(); status(admin ? 'Gestión privada del catálogo.' : 'Acceso exclusivo para administradores.'); if (!admin) return; }
-      else { $('grid').replaceChildren(); $('mode').textContent = 'Precios de venta al público.'; }
-      watch('dev3dCatalogoPublico', value => { publicProducts = value; render(); });
-      const listenWholesale = () => watch('dev3dCatalogoMayorista', value => { wholesale = value; render(); });
-      if (admin) { listenWholesale(); if (adminPage) watch('dev3dTiendas', value => { shops = value; renderAdmin(); }); }
-      else if (user) {
-        watch(`dev3dTiendas/${user.uid}`, profile => {
+        resetShopForm(); $('rulesNotice').hidden = true;
+        $('adminPanel').hidden = !admin; $('adminProducts').replaceChildren(); $('shops').replaceChildren(); $('productForm').reset();
+        if (admin) { showAdminView('home'); status(''); }
+        else { $('calculatorFrame').removeAttribute('src'); $('calculatorPanel').hidden = true; $('productWorkspace').hidden = true; $('shopsView').hidden = true; $('closeCalculator').hidden = true; status(''); }
+      } else if (!shopPage) {
+        $('grid').replaceChildren(); $('mode').textContent = 'Precios de venta al público.';
+      }
+      if ((!adminPage && !shopPage) || admin) {
+        watch('dev3dCatalogoPublico', value => { if (version === generation) { publicProducts = value; render(); } });
+      }
+      if (admin) {
+        watch('dev3dCatalogoMayorista', value => { if (version === generation) { wholesale = value; render(); } });
+        if (adminPage) watch('dev3dTiendas', value => { if (version === generation) { shops = value; renderAdmin(); } });
+      } else if (user) {
+        watch('dev3dTiendas/' + user.uid, profile => {
           if (version !== generation) return;
-          // Restart the protected subscription when access changes; revoke cached prices immediately.
           if (tradeStop) { tradeStop(); tradeStop = null; }
-          wholesale = {}; render();
-          const allowed = profile.rol === 'tienda' && profile.activo === true;
-          $('mode').textContent = allowed ? 'Acceso tiendas · Precio mayorista por unidad y pedido mínimo por producto.' : 'Tu cuenta no tiene acceso mayorista. Contacta con DEV3D Studio para solicitarlo.';
-          if (allowed) { tradeStop = database.onValue(path('dev3dCatalogoMayorista'), snap => { if (version === generation) { wholesale = snap.val() || {}; render(); } }, () => { wholesale = {}; render(); status('No se pudieron consultar los precios mayoristas.'); }); subscriptions.push(() => { if (tradeStop) tradeStop(); tradeStop = null; }); }
+          wholesale = {};
+          const role = window.CATALOGO_NAVIGATION.roleFor(user,profile,window.CATALOGO_CONFIG.ADMIN_EMAILS);
+          setSessionUI(role,profile);
+          if (!adminPage) {
+            render();
+            $('mode').textContent = role === 'shop' ? 'Tu tarifa de tienda está activa. Consulta el precio mayorista y el mínimo de cada producto.' : 'Tu cuenta no tiene acceso mayorista. Contacta con DEV3D Studio para solicitarlo.';
+            if (role === 'shop' && !shopPage) tradeStop = database.onValue(path('dev3dCatalogoMayorista'), snap => { if (version === generation) { wholesale = snap.val() || {}; render(); } }, () => { if (version === generation) { wholesale = {}; render(); status('No se pudieron consultar tus precios mayoristas.'); } });
+          }
         });
       }
     });
-    let tradeStop = null;
   } catch (error) { console.error(error); status('No se pudo iniciar el catálogo. Comprueba tu conexión y vuelve a cargar la página.'); }
 })();
