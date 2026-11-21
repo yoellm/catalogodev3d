@@ -10,6 +10,13 @@
   let publicProducts = {}, wholesale = {}, shops = {}, currentUser = null, currentShopProfile = null, admin = false, generation = 0;
   let subscriptions = [], tradeStop = null, productHashHandled = false, calculatorInstance = null, productSaving = false, uploadedPhoto = null;
   let adminProductPage = 1;
+  let categoryFromLink=catalogPage?new URL('https://www.dev3dstudio.es/catalogo.html'+(location.search||'')).searchParams.get('categoria'):null;
+  function renderCategoryNavigation(){
+    const categories=[...new Set(Object.values(publicProducts).map(p=>String(p.categoria||'').trim()||'Impresión 3D'))].sort((a,b)=>a.localeCompare(b,'es'));
+    for(const id of ['desktopCatalogCategories','mobileCatalogCategories']){
+      $(id).replaceChildren(...categories.map(category=>{const link=el('a',category);link.href='catalogo.html?categoria='+encodeURIComponent(category);return link;}));
+    }
+  }
   function showProductEditor(open) {
     const dialog=$('productDialog');
     $('productForm').hidden = !open; $('productListPanel').hidden = false;
@@ -36,8 +43,9 @@
     $('identity').textContent = role === 'admin' ? 'Administrador' : role === 'shop' ? (profile.nombre || 'Cuenta de tienda') : currentUser ? 'Cuenta sin acceso mayorista' : 'Explora nuestro catálogo';
     $('menuLabel').textContent = role === 'admin' ? 'Administración' : role === 'shop' ? 'Mi tienda' : 'Menú';
     $('adminLink').hidden = role !== 'admin';
-    $('menuCatalog').hidden = role === 'shop';
-    $('headerCatalog').textContent = role === 'shop' ? 'Catálogo mayorista' : 'Catálogo';
+    $('menuCatalog').hidden = false;
+    $('headerCatalog').textContent = role === 'shop' ? 'Catálogo mayorista' : 'Catálogo / Productos';
+    $('mobileCatalogLabel').textContent=$('headerCatalog').textContent;
     for (const id of ['shopLink','shopCatalogLink']) $(id).hidden = role !== 'shop';
     $('shopAccountLink').hidden = role !== 'shop' && profile.rol !== 'tienda';
     $('loginOpen').hidden = !!currentUser;
@@ -172,8 +180,8 @@
     $('loginOpen').onclick = openLogin;
     if (homePage) $('homeShopLogin').onclick = openLogin;
     if (adminPage || shopPage) $('gateLogin').onclick = openLogin;
-    document.addEventListener?.('click', event => { const menu = $('mainMenu'); if (menu.open && !menu.contains(event.target)) menu.open = false; });
-    window.addEventListener('keydown', event => { if (event.key === 'Escape') $('mainMenu').open = false; });
+    document.addEventListener?.('click', event => { for(const id of ['mainMenu','catalogNav']){const menu=$(id);if(menu.open&&!menu.contains(event.target))menu.open=false;} });
+    window.addEventListener('keydown', event => { if (event.key === 'Escape') { $('mainMenu').open = false; $('catalogNav').open=false; } });
     $('loginClose').onclick = () => $('loginDialog').close();
     $('loginForm').onsubmit = async event => {
       event.preventDefault(); const form = event.currentTarget, button = form.querySelector('button'); button.disabled = true; $('loginError').textContent = '';
@@ -215,6 +223,7 @@
       const categoryFor = p => String(p.categoria||'').trim()||'Impresión 3D';
       const counts=new Map();for(const p of Object.values(publicProducts)){const category=categoryFor(p);counts.set(category,(counts.get(category)||0)+1);}
       const categories=[...counts.keys()].sort((a,b)=>a.localeCompare(b,'es'));
+      if(categoryFromLink!==null&&categories.length){selected=categoryFromLink;categoryFromLink=null;}
       $('category').replaceChildren(new Option('Todas las categorías ('+Object.keys(publicProducts).length+')',''), ...categories.map(c => new Option(c+' ('+counts.get(c)+')',c)));
       selected=categories.includes(selected)?selected:'';$('category').value=selected;
       const items = Object.entries(publicProducts).filter(([,p]) => (!selected || categoryFor(p) === selected) && `${p.nombre} ${p.descripcion || ''}`.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().includes(query));
@@ -432,6 +441,7 @@
     authentication.onAuthStateChanged(auth, async user => {
       const version = ++generation;
       resetSubscriptions(); currentUser = user; currentShopProfile = null; wholesale = {}; publicProducts = {}; shops = {};
+      renderCategoryNavigation();
       admin = window.CATALOGO_NAVIGATION.roleFor(user,null,window.CATALOGO_CONFIG.ADMIN_EMAILS) === 'admin';
       setSessionUI(admin ? 'admin' : user ? 'member' : 'public');
       if (shopPage && admin) { location.replace('admin.html'); return; }
@@ -444,8 +454,8 @@
       } else if (catalogPage) {
         $('grid').replaceChildren(); $('mode').textContent = 'Precios de venta al público.';
       }
-      if (homePage || catalogPage || (adminPage && admin)) {
-        watch('dev3dCatalogoPublico', value => { if (version === generation) { publicProducts = value; render(); } });
+      if (homePage || catalogPage || shopPage || (adminPage && admin)) {
+        watch('dev3dCatalogoPublico', value => { if (version === generation) { publicProducts = value; renderCategoryNavigation(); render(); } });
       }
       if (admin && (adminPage || catalogPage)) {
         watch('dev3dCatalogoMayorista', value => { if (version === generation) { wholesale = value; render(); } });

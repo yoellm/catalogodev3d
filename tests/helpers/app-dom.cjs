@@ -1,6 +1,6 @@
 const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');const {parseHTML}=require('linkedom');
 const root=path.resolve(__dirname,'../..');
-async function appDOM(page,media){
+async function appDOM(page,media,search=''){
  const {window}=parseHTML(fs.readFileSync(path.join(root,page),'utf8')),document=window.document;
  Object.defineProperty(window.HTMLSelectElement.prototype,'value',{configurable:true,get(){const options=[...this.querySelectorAll('option')];const selected=options.find(o=>o.hasAttribute('selected'))||options[0];return selected?.getAttribute('value')??selected?.textContent??'';},set(value){for(const o of this.querySelectorAll('option')){if((o.getAttribute('value')??o.textContent)===String(value))o.setAttribute('selected','');else o.removeAttribute('selected');}}});
  window.HTMLElement.prototype.focus=function(){};window.HTMLElement.prototype.scrollIntoView=function(){};
@@ -18,7 +18,7 @@ async function appDOM(page,media){
  window.CATALOGO_HOME=require('../../catalogo-home.js');window.CATALOGO_BOOT={loadFirebase:async()=>[{initializeApp:()=>({})},database,authentication,{getStorage:()=>({}),ref:(_,name)=>name,uploadBytes:async(...args)=>{if(state.upload)return state.upload(...args);throw Error('Unexpected image upload');},getDownloadURL:async()=> 'https://example.test/photo.webp'}]};
  if(media)window.matchMedia=()=>media;
  const navigator={onLine:true};
- await vm.runInNewContext(fs.readFileSync(path.join(root,'catalogo-app.js'),'utf8'),{window,document,navigator,location:{origin:'https://example.test',hash:'',replace(){},assign(){}},URL,Intl,Option:function(text,value){const option=document.createElement('option');option.textContent=text;option.value=value;return option;},console,setTimeout,clearTimeout,confirm:()=>state.confirm});
+ await vm.runInNewContext(fs.readFileSync(path.join(root,'catalogo-app.js'),'utf8'),{window,document,navigator,location:{origin:'https://example.test',hash:'',search,replace(){},assign(){}},URL,Intl,Option:function(text,value){const option=document.createElement('option');option.textContent=text;option.value=value;return option;},console,setTimeout,clearTimeout,confirm:()=>state.confirm});
  return {window,document,state,navigator,node:id=>document.getElementById(id),async session(user){state.user=user;await state.authCallback(user);},emit(name,value){const sub=state.subscriptions.findLast(s=>s.name===name&&s.active);if(!sub)throw Error('No subscription: '+name);sub.callback({val:()=>value});},async submit(id){const form=document.getElementById(id);await form.onsubmit({preventDefault(){},currentTarget:form});}};
 }
 module.exports={appDOM};
