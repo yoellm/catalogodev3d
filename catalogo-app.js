@@ -8,7 +8,7 @@
   if (homePage && location.hash === '#catalogo') { location.replace('catalogo.html'); return; }
   const money = value => new Intl.NumberFormat('es-ES', {style:'currency',currency:'EUR'}).format(value);
   let publicProducts = {}, wholesale = {}, shops = {}, currentUser = null, currentShopProfile = null, admin = false, generation = 0;
-  let subscriptions = [], tradeStop = null, productHashHandled = false, calculatorInstance = null, productSaving = false;
+  let subscriptions = [], tradeStop = null, productHashHandled = false, calculatorInstance = null, productSaving = false, uploadedPhoto = null;
   const status = message => { $('status').textContent = message; };
   function el(tag, text, className) { const node = document.createElement(tag); if (text !== undefined) node.textContent = text; if (className) node.className = className; return node; }
   function safeUrl(value) { try { const url = new URL(value); return ['https:','http:'].includes(url.protocol) ? url.href : ''; } catch { return ''; } }
@@ -114,7 +114,7 @@
     const [appSDK, database, authentication, storageSDK] = await window.CATALOGO_BOOT.loadFirebase();
     const app = appSDK.initializeApp(window.CATALOGO_CONFIG.firebaseConfig, 'dev3d-catalog');
     const db = database.getDatabase(app, databaseURL), auth = authentication.getAuth(app), storage = storageSDK.getStorage(app);
-    const path = name => database.ref(db, name);
+    const path = name => name ? database.ref(db, name) : database.ref(db);
     const watch = (name, callback) => { subscriptions.push(database.onValue(path(name), snap => callback(snap.val() || {}), error => {
       if (homePage) { $('featuredStatus').textContent = 'No hemos podido cargar las piezas. Puedes consultar el catálogo completo.'; }
       const denied = String(error?.code || error?.message || '').toLowerCase().replaceAll('_','-').includes('permission-denied');
@@ -266,7 +266,7 @@
       $('openCalculator').onclick = () => showCalculator(true);
       $('closeCalculator').onclick = () => showAdminView('home');
       function productFeedback(message,kind='info'){$('productMessage').textContent=message;$('productMessage').dataset.kind=kind;}
-      $('resetProduct').onclick = () => { $('productForm').reset(); $('formTitle').textContent = 'Nuevo producto'; productFeedback(''); };
+      $('resetProduct').onclick = () => { $('productForm').reset(); $('formTitle').textContent = 'Nuevo producto'; uploadedPhoto=null; productFeedback(''); };
       $('productForm').onsubmit = async event => {
         event.preventDefault();if(productSaving)return;
         if(!admin){productFeedback('Inicia sesión con una cuenta de administrador para guardar productos.','error');return;}
@@ -280,16 +280,24 @@
         try{
           const id=fields.id.value||database.push(path('dev3dCatalogoPublico')).key;
           let image=fields.imagen.value.trim();const file=fields.foto.files[0];
+          let photoSummary='';
           if(file){
-            if(!file.type.startsWith('image/')||file.size>=8*1024*1024)throw Object.assign(new Error('Elige una imagen de menos de 8 MB.'),{code:'product/image'});
-            productFeedback('Subiendo la fotografía…');button.textContent='Subiendo foto…';
-            const imageRef=storageSDK.ref(storage,'productos/dev3d-catalogo/'+id+'_'+Date.now());
-            await storageSDK.uploadBytes(imageRef,file,{contentType:file.type});image=await storageSDK.getDownloadURL(imageRef);
-            productFeedback('Fotografía subida. Guardando el producto…');button.textContent='Guardando…';
+            if(uploadedPhoto?.file===file){image=uploadedPhoto.url;photoSummary=uploadedPhoto.summary;}
+            else{
+              productFeedback('Comprimiendo la fotografía antes de subirla…');button.textContent='Optimizando foto…';
+              const optimized=await window.CATALOGO_IMAGES.compress(file);
+              const kiloBytes=new Intl.NumberFormat('es-ES',{maximumFractionDigits:1}).format(optimized.size/1024);
+              photoSummary='Fotografía: '+kiloBytes+' KB'+(optimized.saving>0?' ('+optimized.saving+' % menos).':'.');
+              productFeedback(photoSummary+' Subiendo la imagen optimizada…');button.textContent='Subiendo foto…';
+              const imageRef=storageSDK.ref(storage,'productos/dev3d-catalogo/'+id+'_'+Date.now()+'.'+optimized.extension);
+              await storageSDK.uploadBytes(imageRef,optimized.blob,{contentType:optimized.type});image=await storageSDK.getDownloadURL(imageRef);
+              uploadedPhoto={file,url:image,summary:photoSummary};
+            }
+            productFeedback(photoSummary+' Guardando el producto…');button.textContent='Guardando…';
           }
           if(image&&!safeUrl(image))throw Object.assign(new Error('La URL de la imagen debe comenzar por https:// o http://.'),{code:'product/image-url'});
           await database.update(path(''),{['dev3dCatalogoPublico/'+id]:{nombre:values.nombre,descripcion:values.descripcion,categoria:values.categoria,imagen:image,precio:values.precio},['dev3dCatalogoMayorista/'+id]:{precio:values.mayorista,minimo:values.minimo}});
-          f.reset();$('formTitle').textContent='Nuevo producto';productFeedback('Producto guardado. Ya está publicado en el catálogo.','success');
+          f.reset();uploadedPhoto=null;$('formTitle').textContent='Nuevo producto';productFeedback('Producto guardado. Ya está publicado en el catálogo.'+(photoSummary?' '+photoSummary:''),'success');
         }catch(error){productFeedback(window.CATALOGO_PRODUCTS.errorMessage(error),'error');}
         finally{clearTimeout(waiting);productSaving=false;button.disabled=false;button.textContent='Guardar producto';$('resetProduct').disabled=false;f.removeAttribute('aria-busy');}
       };

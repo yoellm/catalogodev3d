@@ -1,0 +1,24 @@
+const assert=require('node:assert/strict');
+const {createCanvas,loadImage}=require('@napi-rs/canvas');
+const images=require('../catalogo-images.js');
+const {appDOM}=require('./helpers/app-dom.cjs');
+(async()=>{
+ let closed=0;
+ const environment={document:{createElement:()=>createCanvas(1,1)},createImageBitmap:async blob=>{const image=await loadImage(Buffer.from(await blob.arrayBuffer()));image.close=()=>closed++;return image;}};
+ const canvas=createCanvas(2000,1500),ctx=canvas.getContext('2d'),pixels=ctx.createImageData(2000,1500);let seed=42;
+ for(let i=0;i<pixels.data.length;i+=4){for(let j=0;j<3;j++){seed=(Math.imul(seed,1664525)+1013904223)>>>0;pixels.data[i+j]=seed>>>24;}pixels.data[i+3]=255;}ctx.putImageData(pixels,0,0);
+ const source=new Blob([canvas.toBuffer('image/png')],{type:'image/png'}),result=await images.compress(source,environment);
+ assert.ok(result.size<=100*1024);assert.ok(Math.max(result.width,result.height)<=1200);assert.equal(result.type,'image/webp');assert.ok(result.size<source.size/20);assert.equal(closed,1);
+ const tiny=createCanvas(12,8);const original=new Blob([tiny.toBuffer('image/png')],{type:'image/png'});const small=await images.compress(original,environment);assert.ok(small.size<=original.size);assert.ok(small.width<=12);assert.ok(small.height<=8);
+ const fallback={...environment,document:{createElement:()=>{const c=createCanvas(1,1),native=c.toBlob.bind(c);c.toBlob=(callback,type,q)=>native(callback,type==='image/webp'?'image/png':type,q);return c;}}};
+ const jpeg=await images.compress(source,fallback);assert.equal(jpeg.type,'image/jpeg');assert.equal(jpeg.extension,'jpg');assert.ok(jpeg.size<=100*1024);
+ await assert.rejects(images.compress(new Blob(['bad'],{type:'text/plain'}),environment),/fotograf/);
+ await assert.rejects(images.compress({type:'image/png',size:31*1024*1024},environment),/30 MB/);
+ const app=await appDOM('admin.html');await app.session({uid:'admin',email:'admin@example.test'});app.window.CATALOGO_IMAGES={compress:async()=>result};
+ const form=app.node('productForm');for(const [key,value] of Object.entries({nombre:'Prueba',precio:'2',mayorista:'1',minimo:'1'}))form.elements[key].value=value;
+ Object.defineProperty(form.elements.foto,'files',{value:[source]});let uploads=0;
+ app.state.upload=async(ref,blob,metadata)=>{uploads++;assert.equal(blob,result.blob);assert.equal(metadata.contentType,'image/webp');assert.match(ref,/\.webp$/);};
+ app.state.update=async()=>{throw Error('Precise SDK failure');};await app.submit('productForm');assert.match(app.node('productMessage').textContent,/Precise SDK failure/);await app.submit('productForm');assert.equal(uploads,1);
+ app.state.update=null;await app.submit('productForm');assert.equal(uploads,1);assert.match(app.node('productMessage').textContent,/Producto guardado/);assert.match(app.state.writes[0].value['dev3dCatalogoPublico/test-product'].imagen,/photo.webp/);
+ console.log('PASS: real photo compression, 100 KB cap, dimensions, JPEG fallback, invalid files, optimized upload and retry reuse. '+source.size+' -> '+result.size+' bytes.');
+})().catch(error=>{console.error(error);process.exitCode=1;});
