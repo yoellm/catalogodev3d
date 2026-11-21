@@ -24,3 +24,21 @@ img{max-width:100%}.hero{padding:38px 40px;margin:10px 0 26px;min-height:0;backg
 
 /* Aprovecha el ancho de la pantalla con márgenes adaptables. */
 :root{--page-gutter:clamp(24px,3vw,64px)}main{width:100%;max-width:none;margin-inline:0;padding-inline:var(--page-gutter)}.site-header,.site-footer{padding-inline:var(--page-gutter)}.home-art{max-width:620px;aspect-ratio:4/3}.about-copy p{max-width:75ch}.process-list p{max-width:75ch}@media(min-width:1100px){.grid{grid-template-columns:repeat(auto-fill,minmax(280px,1fr))}.home-hero{gap:clamp(40px,5vw,120px)}}@media(max-width:760px){:root{--page-gutter:18px}.home-art{max-width:none;aspect-ratio:auto}}
+
+/* Jerarquía de anchuras: fondos completos y contenido centrado. */
+:root{--content-width:1360px;--wide-content-width:1560px}
+.site-header,.site-footer{padding-inline:max(var(--page-gutter),calc((100% - var(--content-width))/2))}
+.home-main{display:grid;grid-template-columns:minmax(var(--page-gutter),1fr) minmax(0,var(--content-width)) minmax(var(--page-gutter),1fr);padding-inline:0}
+.home-main>*{grid-column:2;min-width:0}
+.home-hero{gap:64px;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr)}
+.home-art{max-width:520px;justify-self:end;aspect-ratio:4/3}
+.home-strip{grid-column:1/-1;justify-content:center;gap:clamp(22px,3vw,64px);padding-inline:var(--page-gutter)}
+.home-main>#servicios{grid-column:1/-1;width:calc(100% - 2 * var(--page-gutter));max-width:var(--wide-content-width);margin-inline:auto}
+.home-shop-banner{grid-column:1/-1;border-radius:0;border-inline:0;padding-inline:max(var(--page-gutter),calc((100% - var(--content-width))/2));gap:64px}
+.about-copy p,.process-list p{max-width:70ch}
+#adminDashboard,.workspace-heading{width:100%;max-width:var(--wide-content-width);margin-inline:auto}
+body[data-admin] .admin-layout{max-width:1440px;margin-inline:auto}
+body[data-shop] main{max-width:var(--content-width);margin-inline:auto}
+#calculatorPanel{max-width:var(--wide-content-width);margin-inline:auto}
+@media(max-width:1000px){.home-hero{gap:32px}.home-shop-banner{gap:35px}}
+@media(max-width:760px){.home-hero{grid-template-columns:1fr;gap:32px}.home-art{max-width:none;justify-self:stretch;aspect-ratio:auto}.home-strip{gap:12px;justify-content:center}.home-shop-banner{grid-template-columns:1fr;gap:25px}.home-main>#servicios{width:calc(100% - 2 * var(--page-gutter))}}
