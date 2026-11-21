@@ -12,6 +12,16 @@
   const status = message => { $('status').textContent = message; };
   function el(tag, text, className) { const node = document.createElement(tag); if (text !== undefined) node.textContent = text; if (className) node.className = className; return node; }
   function safeUrl(value) { try { const url = new URL(value); return ['https:','http:'].includes(url.protocol) ? url.href : ''; } catch { return ''; } }
+  if (window.matchMedia) {
+    const menu = $('mainMenu'), content = menu.querySelector('.menu-content');
+    const desktop = el('div', undefined, 'desktop-account'); menu.after(desktop);
+    const mobile = window.matchMedia('(max-width:760px)');
+    const arrangeNavigation = () => {
+      menu.open = false;
+      (mobile.matches ? menu : desktop).append(content);
+    };
+    arrangeNavigation(); mobile.addEventListener('change', arrangeNavigation);
+  }
   function setSessionUI(role, profile = {}) {
     document.body.dataset.role = role;
     $('identity').textContent = role === 'admin' ? 'Administrador' : role === 'shop' ? (profile.nombre || 'Cuenta de tienda') : currentUser ? 'Cuenta sin acceso mayorista' : 'Explora nuestro catálogo';

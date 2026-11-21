@@ -60,3 +60,14 @@ body[data-shop] main{max-width:calc(var(--content-width) + 2 * var(--page-gutter
 /* Recuperación de contraseña con apariencia de enlace. */
 #forgotPassword{display:inline-block;min-height:0;padding:0;margin:0 0 8px;border:0;border-radius:0;background:transparent;color:var(--blue-light);font-size:13px;font-weight:400;text-decoration:underline;text-underline-offset:3px;box-shadow:none}
 #forgotPassword:hover{background:transparent;color:#c4d8ff}
+
+/* Navegación directa en escritorio y desplegable en móvil. */
+.desktop-account{display:none}
+@media(min-width:761px){
+.site-header #mainMenu{display:none}
+.desktop-account{display:flex;align-items:center}
+.desktop-account .menu-content{position:static;width:auto;max-width:none;padding:0;background:transparent;border:0;border-radius:0;box-shadow:none;flex-direction:row;align-items:center;gap:16px}
+.desktop-account .menu-eyebrow,.desktop-account #identity,.desktop-account .menu-home,.desktop-account a[href^="index.html#"],.desktop-account #menuCatalog,.desktop-account #shopCatalogLink,.desktop-account #shopAccountLink{display:none}
+.desktop-account .menu-content a,.desktop-account .menu-content button{width:auto;min-height:0;margin:0;padding:0;border:0;border-radius:0;background:transparent;color:#b9c5da;font-size:13px;font-weight:400;text-decoration:none;white-space:nowrap}
+.desktop-account .menu-content a:hover,.desktop-account .menu-content button:hover{color:white;background:transparent}
+}
