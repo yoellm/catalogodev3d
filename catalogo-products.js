@@ -23,7 +23,8 @@
     if(code==='storage/retry-limit-exceeded')return 'La fotografía no se ha podido subir por un problema de conexión. Inténtalo de nuevo.';
     if(code==='storage/quota-exceeded')return 'El almacenamiento de fotografías ha alcanzado su límite. Puedes guardar el producto sin foto.';
     if(code==='storage/bucket-not-found')return 'No se ha encontrado el almacenamiento de fotografías. Puedes guardar el producto sin foto.';
-    return 'No se ha podido guardar el producto. '+(code ? 'Código: '+code+'. ' : '')+'Tus datos se mantienen en el formulario para que puedas reintentarlo.';
+    const detail=typeof error?.message==='string' ? error.message : '';
+    return 'No se ha podido guardar el producto. '+(detail ? detail+' ' : '')+(code ? 'Código: '+code+'. ' : '')+'Tus datos se mantienen en el formulario para que puedas reintentarlo.';
   }
   scope.CATALOGO_PRODUCTS=Object.freeze({validate,errorMessage});
   if(typeof module!=='undefined')module.exports={validate,errorMessage};
