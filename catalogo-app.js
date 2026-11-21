@@ -117,7 +117,7 @@
     const url = window.CATALOGO_HOME.googleReviewUrl(reviews?.url);
     if (url) {
       $('googleReviews').hidden = false; $('googleReviewsLink').href = url;
-      (Array.isArray(reviews.items) ? reviews.items : []).slice(0,3).forEach(review=>{
+      (Array.isArray(reviews.items) ? reviews.items : []).forEach(review=>{
         if (typeof review.author !== 'string' || typeof review.text !== 'string' || !review.author.trim() || !review.text.trim() || !Number.isInteger(review.rating) || review.rating<1 || review.rating>5) return;
         const card=el('figure',undefined,'google-review-card');
         const stars=el('p','★'.repeat(review.rating)+'☆'.repeat(5-review.rating),'review-stars'); stars.setAttribute('aria-label',review.rating+' de 5 estrellas');
@@ -125,6 +125,8 @@
         const caption=el('figcaption'), source=el('a','Ver en Google ↗');source.href=window.CATALOGO_HOME.googleReviewUrl(review.url)||url;source.target='_blank';source.rel='noopener noreferrer';
         caption.append(el('strong',review.author),source);card.append(stars,quote,caption);$('googleReviewCards').append(card);
       });
+      window.DEV3D_REVIEWS?.mount();
+      if(!$('googleReviewCards').children.length){$('reviewsTitle').textContent='Tu opinión nos ayuda a crecer.';$('reviewsIntro').textContent='¿Ya tienes una pieza de DEV3D Studio? Cuéntanos tu experiencia en Google.';$('googleReviewsLink').textContent='Visitar nuestra ficha de Google ↗';}
     }
   }
   try {
