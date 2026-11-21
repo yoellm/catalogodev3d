@@ -8,7 +8,7 @@
   if (homePage && location.hash === '#catalogo') { location.replace('catalogo.html'); return; }
   const money = value => new Intl.NumberFormat('es-ES', {style:'currency',currency:'EUR'}).format(value);
   let publicProducts = {}, wholesale = {}, shops = {}, currentUser = null, admin = false, generation = 0;
-  let subscriptions = [], tradeStop = null;
+  let subscriptions = [], tradeStop = null, productHashHandled = false;
   const status = message => { $('status').textContent = message; };
   function el(tag, text, className) { const node = document.createElement(tag); if (text !== undefined) node.textContent = text; if (className) node.className = className; return node; }
   function safeUrl(value) { try { const url = new URL(value); return ['https:','http:'].includes(url.protocol) ? url.href : ''; } catch { return ''; } }
@@ -66,6 +66,21 @@
     if (view === 'calculator' && !$('calculatorFrame').getAttribute('src')) $('calculatorFrame').src = 'calculadora/index.html?v=1';
     $('viewTitle').focus?.({preventScroll:true});
   }
+  if (homePage) {
+    const reviews = window.DEV3D_WEB_CONTENT?.googleReviews;
+    const url = window.CATALOGO_HOME.googleReviewUrl(reviews?.url);
+    if (url) {
+      $('googleReviews').hidden = false; $('googleReviewsLink').href = url;
+      (Array.isArray(reviews.items) ? reviews.items : []).slice(0,3).forEach(review=>{
+        if (typeof review.author !== 'string' || typeof review.text !== 'string' || !review.author.trim() || !review.text.trim() || !Number.isInteger(review.rating) || review.rating<1 || review.rating>5) return;
+        const card=el('figure',undefined,'google-review-card');
+        const stars=el('p','★'.repeat(review.rating)+'☆'.repeat(5-review.rating),'review-stars'); stars.setAttribute('aria-label',review.rating+' de 5 estrellas');
+        const quote=el('blockquote',review.text);
+        const caption=el('figcaption'), source=el('a','Ver en Google ↗');source.href=window.CATALOGO_HOME.googleReviewUrl(review.url)||url;source.target='_blank';source.rel='noopener noreferrer';
+        caption.append(el('strong',review.author),source);card.append(stars,quote,caption);$('googleReviewCards').append(card);
+      });
+    }
+  }
   try {
     const databaseURL = window.CATALOGO_CONFIG?.firebaseConfig?.databaseURL;
     if (!databaseURL) { status('Falta configurar la base de datos del catálogo en firebase-config.js.'); return; }
@@ -74,6 +89,7 @@
     const db = database.getDatabase(app, databaseURL), auth = authentication.getAuth(app), storage = storageSDK.getStorage(app);
     const path = name => database.ref(db, name);
     const watch = (name, callback) => { subscriptions.push(database.onValue(path(name), snap => callback(snap.val() || {}), error => {
+      if (homePage) { $('featuredStatus').textContent = 'No hemos podido cargar las piezas. Puedes consultar el catálogo completo.'; }
       const denied = String(error?.code || error?.message || '').toLowerCase().replaceAll('_','-').includes('permission-denied');
       if (adminPage && admin && denied) $('rulesNotice').hidden = false;
       status(adminPage ? 'No se pudieron cargar los datos. Comprueba la conexión y las reglas de acceso del catálogo.' : 'El catálogo no está disponible en este momento. Inténtalo de nuevo más tarde.');
@@ -100,8 +116,26 @@
       finally { button.disabled = false; }
     };
     $('logout').onclick = async () => { try { await authentication.signOut(auth); } catch { status('No se pudo cerrar la sesión. Inténtalo de nuevo.'); } };
+    function renderFeatured() {
+      const items = window.CATALOGO_HOME.selectFeatured(publicProducts);
+      $('featuredProducts').replaceChildren();
+      $('featuredEmpty').hidden = items.length > 0;
+      $('featuredStatus').textContent = '';
+      items.forEach(([id,p])=>{
+        const card = el('a',undefined,'featured-product');
+        card.href = 'catalogo.html#producto-' + encodeURIComponent(id);
+        const photo = el('div',undefined,'featured-photo'), image = el('img');
+        image.src = safeUrl(p.imagen); image.alt = p.nombre; image.loading = 'lazy'; image.decoding = 'async';
+        image.addEventListener('error',()=>{ photo.replaceChildren(el('span','Fotografía no disponible','image-unavailable')); });
+        photo.append(image);
+        const body = el('div',undefined,'featured-product-body');
+        body.append(el('span',p.categoria || 'Impresión 3D','tag'),el('h3',p.nombre),el('p',money(p.precio),'featured-price'),el('span','Ver pieza →','featured-action'));
+        card.append(photo,body); $('featuredProducts').append(card);
+      });
+    }
     function render() {
-      if (shopPage || homePage) { status(''); return; }
+      if (homePage) { renderFeatured(); return; }
+      if (shopPage) { status(''); return; }
       if (adminPage) { renderAdmin(); return; }
       const query = $('search').value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
       const selected = $('category').value;
@@ -114,6 +148,7 @@
       $('grid').replaceChildren();
       items.forEach(([id,p]) => {
         const card = el('article', undefined,'card'), photo = el('div','3D','photo'), body = el('div',undefined,'card-body');
+        card.id = 'producto-' + id; card.tabIndex = -1;
         const url = safeUrl(p.imagen);
         if (url) { const image = el('img'); image.src = url; image.alt = p.nombre; image.loading = 'lazy'; image.onerror = () => photo.replaceChildren(el('span','3D')); photo.replaceChildren(image); }
         body.append(el('span',p.categoria || 'Impresión 3D','tag'),el('h2',p.nombre),el('p',p.descripcion || '', 'description'),el('p',money(p.precio),'price'),el('small','Precio de venta al público'));
@@ -121,6 +156,9 @@
         card.append(photo,body); $('grid').append(card);
       });
       status(items.length ? `${items.length} productos` : 'No hay productos para mostrar.');
+      if (!productHashHandled && location.hash?.startsWith('#producto-')) {
+        try { const target = document.getElementById(decodeURIComponent(location.hash.slice(1))); if (target) { target.scrollIntoView({block:'center'}); target.focus?.({preventScroll:true}); productHashHandled = true; } } catch {}
+      }
     }
     function resetShopForm() {
       $('shopForm').reset();
@@ -226,7 +264,7 @@
       } else if (catalogPage) {
         $('grid').replaceChildren(); $('mode').textContent = 'Precios de venta al público.';
       }
-      if (catalogPage || (adminPage && admin)) {
+      if (homePage || catalogPage || (adminPage && admin)) {
         watch('dev3dCatalogoPublico', value => { if (version === generation) { publicProducts = value; render(); } });
       }
       if (admin && (adminPage || catalogPage)) {

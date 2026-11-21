@@ -86,8 +86,15 @@ Validación: tests/navigation.cjs comprueba rutas de acceso, menús por rol, tar
 
 ## Portada del estudio y contacto
 
-La página inicial presenta DEV3D Studio con secciones de estudio, servicios, proceso de trabajo, tiendas, preguntas frecuentes y contacto. El catálogo se encuentra en catalogo.html y conserva búsquedas, categorías y tarifas por rol. Los enlaces antiguos a index.html#catalogo llevan al catálogo. La portada no consulta productos ni tarifas, por lo que su contenido se muestra independientemente de la carga del catálogo.
+La página inicial presenta DEV3D Studio con secciones de estudio, servicios, proceso de trabajo, tiendas, preguntas frecuentes y contacto. El catálogo se encuentra en catalogo.html y conserva búsquedas, categorías y tarifas por rol. Los enlaces antiguos a index.html#catalogo llevan al catálogo. La presentación se muestra independientemente del catálogo. La selección de muestras consulta únicamente productos públicos; no lee tarifas mayoristas.
 
 Contacto público facilitado por el propietario: WhatsApp +34 678 746 953, Instagram @dev3d.studio y TikTok @dev3dstudio. Los enlaces abren sus respectivos servicios; no se envían mensajes automáticamente. No se ha publicado ninguna dirección de correo, dirección física, plazo de entrega ni política comercial no proporcionada.
 
 Se incluyen metadatos básicos, datos de organización y un sitemap con las dos páginas públicas. Las páginas de administración, tienda y calculadora llevan noindex; la protección de los datos sigue correspondiendo a Firebase.
+
+
+## Muestras de productos y reseñas
+
+La portada muestra hasta cuatro productos del catálogo con nombre, foto HTTP/HTTPS y precio público válidos. La selección se actualiza con Firebase y enlaza a cada pieza del catálogo. Con el catálogo vacío se muestra un estado informativo y un enlace al Instagram del estudio; no se incluyen productos inventados ni productos del inventario anterior.
+
+La sección de reseñas enlaza a la ficha de Google facilitada por el propietario. web-content.js admite hasta tres comentarios reales con author, text, rating (entero de 1 a 5) y url opcional de Google. Actualmente no hay comentarios copiados ni puntuación agregada. El contenido se incorpora manualmente y no se presenta como sincronización automática. No se utiliza Google Places, servicios de terceros ni APIs de pago.
