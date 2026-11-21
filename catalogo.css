@@ -105,3 +105,6 @@ body.product-modal-open{overflow:hidden}
 .catalog-pricing{margin-top:auto}.catalog-pricing>.price{margin-top:0}
 .featured-photo{overflow:hidden}.featured-photo img{object-fit:cover;object-position:center}
 body.catalog-detail-open{overflow:hidden}.catalog-detail-dialog{width:calc(100% - 32px);max-width:760px;max-height:90dvh;padding:30px;overscroll-behavior:contain}.catalog-detail-dialog h2{padding-right:38px;font-size:24px;overflow-wrap:anywhere}.catalog-detail-close{position:absolute;right:12px;top:12px;width:36px;min-height:36px;padding:0;font-size:24px}.catalog-detail-photo{height:340px;background:#151c28;border-radius:8px;overflow:hidden}.catalog-detail-photo img{display:block;width:100%;height:100%;object-fit:contain}.catalog-detail-description{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.85;color:#c1cee3;font-size:14px}@media(max-width:760px){.catalog-detail-dialog{padding:24px 20px}.catalog-detail-photo{height:260px}}
+
+/* Logo discreto para productos sin fotografía o con una imagen no disponible. */
+#grid .photo .product-watermark{width:58%;height:58%;object-fit:contain;opacity:.25;mix-blend-mode:screen;pointer-events:none;user-select:none}
