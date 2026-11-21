@@ -11,8 +11,11 @@
   let subscriptions = [], tradeStop = null, productHashHandled = false, calculatorInstance = null, productSaving = false, uploadedPhoto = null;
   let adminProductPage = 1;
   function showProductEditor(open) {
-    $('productForm').hidden = !open; $('productListPanel').hidden = open;
-    if(open) $('productForm').scrollIntoView({behavior:'smooth',block:'start'});
+    const dialog=$('productDialog');
+    $('productForm').hidden = !open; $('productListPanel').hidden = false;
+    if(open){if(!dialog.open)dialog.showModal();dialog.scrollTop=0;}
+    else if(dialog.open)dialog.close();
+    document.body.classList?.toggle('product-modal-open',open);
   }
   const status = message => { $('status').textContent = message; };
   function el(tag, text, className) { const node = document.createElement(tag); if (text !== undefined) node.textContent = text; if (className) node.className = className; return node; }
@@ -325,6 +328,9 @@
       $('openCalculator').onclick = () => showCalculator(true);
       $('closeCalculator').onclick = () => showAdminView('home');
       function productFeedback(message,kind='info'){$('productMessage').textContent=message;$('productMessage').dataset.kind=kind;}
+      $('closeProductDialog').onclick=()=>{if(!productSaving)showProductEditor(false);};
+      $('productDialog').oncancel=event=>{if(productSaving)event.preventDefault();};
+      $('productDialog').onclose=()=>{$('productForm').hidden=true;document.body.classList?.remove('product-modal-open');};
       $('resetProduct').onclick = () => { if(productSaving)return;$('productForm').reset(); $('formTitle').textContent = 'Nuevo producto'; uploadedPhoto=null; productFeedback('');showProductEditor(false); };
       $('newProduct').onclick=()=>{if(productSaving)return;$('productForm').reset();uploadedPhoto=null;$('formTitle').textContent='Nuevo producto';productFeedback('');$('catalogListMessage').textContent='';showProductEditor(true);$('productForm').elements.nombre.focus();};
       for(const id of ['adminProductSearch','adminProductCategory','adminProductSort'])$(id).oninput=()=>{adminProductPage=1;renderAdmin();};

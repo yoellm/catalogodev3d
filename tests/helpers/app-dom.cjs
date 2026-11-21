@@ -4,6 +4,7 @@ async function appDOM(page,media){
  const {window}=parseHTML(fs.readFileSync(path.join(root,page),'utf8')),document=window.document;
  Object.defineProperty(window.HTMLSelectElement.prototype,'value',{configurable:true,get(){const options=[...this.querySelectorAll('option')];const selected=options.find(o=>o.hasAttribute('selected'))||options[0];return selected?.getAttribute('value')??selected?.textContent??'';},set(value){for(const o of this.querySelectorAll('option')){if((o.getAttribute('value')??o.textContent)===String(value))o.setAttribute('selected','');else o.removeAttribute('selected');}}});
  window.HTMLElement.prototype.focus=function(){};window.HTMLElement.prototype.scrollIntoView=function(){};
+ for(const dialog of document.querySelectorAll('dialog')){dialog.showModal=function(){this.open=true;};dialog.close=function(){this.open=false;this.onclose?.();};}
  for(const form of document.querySelectorAll('form')){
   const controls=[...form.querySelectorAll('input,select,textarea,button')],initial=new Map(controls.map(e=>[e,e.value]));
   Object.defineProperty(form,'elements',{configurable:true,get(){return Object.fromEntries(controls.flatMap(e=>e.name?[[e.name,e]]:e.id?[[e.id,e]]:[]));}});

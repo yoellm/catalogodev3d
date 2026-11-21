@@ -29,6 +29,7 @@ assert.equal(received.data.precio,2); assert.equal(received.data.mayorista,1.46)
 const nodes={};
 function node(id){return nodes[id] ||= {hidden:false,value:'',textContent:'',attrs:{},getAttribute(k){return this.attrs[k]??null;},set src(v){this.attrs.src=v;},removeAttribute(k){delete this.attrs[k];},replaceChildren(){},scrollIntoView(){},querySelector(){return {disabled:false};}};}
 const form=node('productForm');
+node('productDialog').showModal=function(){this.open=true;};node('productDialog').close=function(){this.open=false;this.onclose?.();};
 form.elements=Object.fromEntries(['id','nombre','descripcion','categoria','imagen','precio','mayorista','minimo'].map(k=>[k,{value:''}]));
 form.reset=()=>Object.values(form.elements).forEach(e=>e.value='');
 const shopForm=node('shopForm'); shopForm.elements=Object.fromEntries(['uid','nombre','email','password','activo'].map(k=>[k,{value:'',required:false}])); shopForm.reset=()=>{}; shopForm.reportValidity=()=>true;
