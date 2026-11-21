@@ -95,7 +95,8 @@
           ".validate": false
         },
         "email": {
-          ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 254"
+          ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 254",
+          ".write": "auth != null && auth.uid == $uid && root.child('dev3dTiendas').child($uid).child('rol').val() == 'tienda' && newData.isString() && newData.val() == auth.token.email"
         }
       }
     }

@@ -107,3 +107,16 @@ La calculadora ya no usa iframe ni un documento independiente: sus controles se 
 Se conserva la clave local dev3d-catalogo-costes-v1 para mantener los ajustes existentes. Salir de la pantalla y volver no duplica los controles ni pierde el cálculo en curso. Cerrar sesión desmonta los controles y desactiva sus acciones. La antigua dirección calculadora/index.html redirige a admin.html#calculadora.
 
 Se mantienen cálculo manual, materiales, electricidad, trabajo, margen, IVA, precios para tiendas, mínimo, precio cerrado, lectura de G-code y G-code 3MF, copia e impresión. Para ejecutar las pruebas, instalar dependencias de desarrollo con npm ci y ejecutar npm test. linkedom se usa solo en pruebas; la web sigue siendo estática y no necesita instalación ni compilación para publicarse. La prueba nativa utiliza los controles del HTML real y un 3MF comprimido de dos placas.
+
+
+## Eliminar tiendas y gestionar credenciales
+
+Administración → Tiendas permite crear, editar, desactivar y eliminar tiendas. Eliminar requiere confirmación y borra únicamente dev3dTiendas/UID, retirando su acceso mayorista. Se conserva la cuenta de Firebase Authentication, compartida con el resto del proyecto: no se borra el usuario global ni se alteran datos del inventario.
+
+En Mi tienda → Mi cuenta, las tiendas pueden cambiar correo y contraseña tras introducir su contraseña actual. El correo utiliza verifyBeforeUpdateEmail: solo cambia al confirmar el enlace enviado a la dirección nueva. Después se inicia sesión con ese correo. Actualizar estado de mi correo vuelve a cargar la cuenta; el perfil se sincroniza por UID con el correo del token autenticado. No se guardan contraseñas en Realtime Database. Las tiendas desactivadas conservan el acceso a sus ajustes de cuenta, pero no a los precios mayoristas.
+
+Las reglas permiten al propietario actualizar exclusivamente el campo email de su ficha existente, con el mismo correo de su token; no permiten crear perfiles, cambiar roles, activar acceso ni borrar tiendas. El resto de campos continúa limitado al administrador.
+
+## Respuesta al guardar productos
+
+El formulario indica los campos obligatorios y muestra validación, progreso y resultado junto al botón de guardar. Evita envíos duplicados y conserva los datos si Firebase devuelve un error. Los productos sin fotografía se guardan sin utilizar Storage. Si falta el precio mayorista, PVP, nombre o mínimo, el formulario indica el campo.

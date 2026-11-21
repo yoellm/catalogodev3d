@@ -1,0 +1,12 @@
+const assert=require('node:assert/strict');const {appDOM}=require('./helpers/app-dom.cjs');
+(async()=>{
+const app=await appDOM('admin.html');await app.session({uid:'admin',email:'admin@example.test'});const form=app.node('productForm');
+function fill(){Object.assign(form.elements.nombre,{value:'Pieza de prueba'});form.elements.precio.value='2.50';form.elements.mayorista.value='1.20';form.elements.minimo.value='2';}
+fill();form.elements.mayorista.value='';await app.submit('productForm');assert.match(app.node('productMessage').textContent,/precio mayorista/);assert.equal(app.state.writes.length,0);assert.equal(app.node('saveProduct').disabled,false);
+fill();let finish;app.state.update=async(name,value)=>{app.state.writes.push({name,value});await new Promise(resolve=>finish=resolve);};const pending=app.submit('productForm');assert.equal(app.node('saveProduct').disabled,true);assert.match(app.node('productMessage').textContent,/Guardando/);await app.submit('productForm');assert.equal(app.state.writes.length,1);finish();await pending;assert.equal(app.node('saveProduct').disabled,false);assert.match(app.node('productMessage').textContent,/Producto guardado/);
+const written=app.state.writes[0].value;assert.equal(written['dev3dCatalogoPublico/test-product'].nombre,'Pieza de prueba');assert.equal(written['dev3dCatalogoPublico/test-product'].imagen,'');assert.equal(written['dev3dCatalogoPublico/test-product'].precio,2.5);assert.equal(written['dev3dCatalogoMayorista/test-product'].precio,1.2);assert.equal(written['dev3dCatalogoMayorista/test-product'].minimo,2);
+app.state.update=async()=>{throw {code:'PERMISSION_DENIED'};};fill();await app.submit('productForm');assert.match(app.node('productMessage').textContent,/Firebase ha rechazado/);assert.equal(form.elements.nombre.value,'Pieza de prueba');assert.equal(app.node('saveProduct').disabled,false);
+app.navigator.onLine=false;await app.submit('productForm');assert.match(app.node('productMessage').textContent,/No hay conexión/);app.navigator.onLine=true;
+await app.session(null);fill();await app.submit('productForm');assert.match(app.node('productMessage').textContent,/administrador/);
+console.log('PASS: guardado real del formulario sin foto, campos obligatorios visibles, progreso, bloqueo de duplicados, permisos, conexión y conservación de datos tras fallar.');
+})().catch(error=>{console.error(error);process.exitCode=1;});

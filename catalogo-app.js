@@ -7,8 +7,8 @@
   const catalogPage = !adminPage && !shopPage && !homePage;
   if (homePage && location.hash === '#catalogo') { location.replace('catalogo.html'); return; }
   const money = value => new Intl.NumberFormat('es-ES', {style:'currency',currency:'EUR'}).format(value);
-  let publicProducts = {}, wholesale = {}, shops = {}, currentUser = null, admin = false, generation = 0;
-  let subscriptions = [], tradeStop = null, productHashHandled = false, calculatorInstance = null;
+  let publicProducts = {}, wholesale = {}, shops = {}, currentUser = null, currentShopProfile = null, admin = false, generation = 0;
+  let subscriptions = [], tradeStop = null, productHashHandled = false, calculatorInstance = null, productSaving = false;
   const status = message => { $('status').textContent = message; };
   function el(tag, text, className) { const node = document.createElement(tag); if (text !== undefined) node.textContent = text; if (className) node.className = className; return node; }
   function safeUrl(value) { try { const url = new URL(value); return ['https:','http:'].includes(url.protocol) ? url.href : ''; } catch { return ''; } }
@@ -19,7 +19,8 @@
     $('adminLink').hidden = role !== 'admin';
     $('menuCatalog').hidden = role === 'shop';
     $('headerCatalog').textContent = role === 'shop' ? 'Catálogo mayorista' : 'Catálogo';
-    for (const id of ['shopLink','shopCatalogLink','shopAccountLink']) $(id).hidden = role !== 'shop';
+    for (const id of ['shopLink','shopCatalogLink']) $(id).hidden = role !== 'shop';
+    $('shopAccountLink').hidden = role !== 'shop' && profile.rol !== 'tienda';
     $('loginOpen').hidden = !!currentUser;
     $('logout').hidden = !currentUser;
     if (homePage) {
@@ -35,6 +36,10 @@
       $('gateLogin').hidden = !!currentUser;
     }
     if (shopPage) {
+      const hasShopAccount=!!currentUser && !admin && profile.rol==='tienda';
+      $('accountSettings').hidden=!hasShopAccount;
+      $('accountCurrentEmail').textContent=hasShopAccount ? currentUser.email || '' : '';
+      if(!hasShopAccount){$('emailChangeForm').reset();$('passwordChangeForm').reset();for(const id of ['emailChangeMessage','passwordChangeMessage','accountStateMessage'])$(id).textContent='';}
       $('shopDashboard').hidden = role !== 'shop';
       $('shopGate').hidden = role === 'shop';
       $('gateLogin').hidden = !!currentUser;
@@ -208,7 +213,50 @@
       if (!Object.keys(publicProducts).length) $('adminProducts').append(el('p','Todavía no hay productos. Crea el primero desde el formulario.','empty-list'));
       $('shops').replaceChildren();
       if (!Object.keys(shops).length) $('shops').append(el('p','Todavía no hay tiendas. Da de alta la primera desde el formulario.','empty-list'));
-      Object.entries(shops).forEach(([uid,s]) => { const row = el('div',undefined,'admin-row'), edit = el('button','Editar acceso'); row.append(el('strong',s.nombre),el('p',(s.email ? s.email + ' · ' : '') + (s.activo ? 'Tienda autorizada' : 'Acceso desactivado'))); edit.onclick = () => { resetShopForm(); const f = $('shopForm'); f.elements.uid.value = uid; f.elements.nombre.value = s.nombre; f.elements.activo.value = String(s.activo); $('shopCredentials').hidden = true; f.elements.email.required = false; f.elements.password.required = false; $('shopEditEmail').hidden = false; $('shopEditEmail').textContent = s.email || 'Cuenta ya autorizada'; $('shopFormTitle').textContent = 'Editar acceso de tienda'; $('saveShop').textContent = 'Guardar acceso'; f.scrollIntoView({behavior:'smooth'}); }; row.append(edit); $('shops').append(row); });
+      Object.entries(shops).forEach(([uid,s]) => { const row = el('div',undefined,'admin-row'), edit = el('button','Editar acceso'), remove = el('button','Eliminar tienda','danger-button'); row.append(el('strong',s.nombre),el('p',(s.email ? s.email + ' · ' : '') + (s.activo ? 'Tienda autorizada' : 'Acceso desactivado'))); edit.onclick = () => { resetShopForm(); const f = $('shopForm'); f.elements.uid.value = uid; f.elements.nombre.value = s.nombre; f.elements.activo.value = String(s.activo); $('shopCredentials').hidden = true; f.elements.email.required = false; f.elements.password.required = false; $('shopEditEmail').hidden = false; $('shopEditEmail').textContent = s.email || 'Cuenta ya autorizada'; $('shopFormTitle').textContent = 'Editar acceso de tienda'; $('saveShop').textContent = 'Guardar acceso'; f.scrollIntoView({behavior:'smooth'}); }; remove.onclick=async()=>{
+        if(!admin || !confirm('¿Eliminar la tienda «'+s.nombre+'» y retirar su acceso mayorista?'))return;
+        remove.disabled=true;
+        try{await database.set(path('dev3dTiendas/'+uid),null);if($('shopForm').elements.uid.value===uid)resetShopForm();status('Tienda eliminada y acceso mayorista retirado.');}
+        catch{status('No se pudo eliminar la tienda. Comprueba la conexión y tus permisos.');}
+        finally{remove.disabled=false;}
+      };row.append(edit,remove); $('shops').append(row); });
+    }
+    let emailSyncInFlight=false;
+    async function syncShopEmail(profile){
+      if(!shopPage||emailSyncInFlight||!currentUser||profile?.rol!=='tienda')return;
+      const user=currentUser,version=generation;emailSyncInFlight=true;
+      try{await window.CATALOGO_ACCOUNT.syncEmail({sdk:authentication,user,profile,saveEmail:async(uid,email)=>{
+        if(version!==generation||currentUser?.uid!==uid||currentShopProfile?.rol!=='tienda')return;
+        await database.set(path('dev3dTiendas/'+uid+'/email'),email);
+      }});return true;}
+      catch(error){if(version===generation&&currentShopProfile?.rol==='tienda')$('accountStateMessage').textContent='No se pudo sincronizar el correo del perfil. Pulsa Actualizar estado de mi correo para reintentarlo.';return false;}
+      finally{emailSyncInFlight=false;}
+    }
+    if(shopPage){
+      auth.languageCode='es';
+      $('emailChangeForm').onsubmit=async event=>{
+        event.preventDefault();if(!currentUser||admin||currentShopProfile?.rol!=='tienda')return;
+        const form=event.currentTarget;if(!form.reportValidity())return;
+        const button=form.querySelector('button');button.disabled=true;$('emailChangeMessage').textContent='Preparando el cambio…';
+        try{const email=await window.CATALOGO_ACCOUNT.changeEmail({sdk:authentication,user:currentUser,currentPassword:form.elements.currentPassword.value,newEmail:form.elements.newEmail.value});form.reset();$('emailChangeMessage').textContent='Enlace enviado a '+email+'. Confirma el nuevo correo y vuelve a iniciar sesión con él. Si no lo ves, revisa el correo no deseado.';}
+        catch(error){$('emailChangeMessage').textContent=window.CATALOGO_ACCOUNT.errorMessage(error);}
+        finally{form.elements.currentPassword.value='';button.disabled=false;}
+      };
+      $('passwordChangeForm').onsubmit=async event=>{
+        event.preventDefault();if(!currentUser||admin||currentShopProfile?.rol!=='tienda')return;
+        const form=event.currentTarget;if(!form.reportValidity())return;
+        const button=form.querySelector('button');button.disabled=true;$('passwordChangeMessage').textContent='Guardando contraseña…';
+        try{await window.CATALOGO_ACCOUNT.changePassword({sdk:authentication,user:currentUser,currentPassword:form.elements.currentPassword.value,newPassword:form.elements.newPassword.value,confirmation:form.elements.confirmation.value});$('passwordChangeMessage').textContent='Contraseña actualizada. Utilízala la próxima vez que inicies sesión.';}
+        catch(error){$('passwordChangeMessage').textContent=window.CATALOGO_ACCOUNT.errorMessage(error);}
+        finally{form.reset();button.disabled=false;}
+      };
+      $('refreshAccount').onclick=async()=>{
+        if(!currentUser||currentShopProfile?.rol!=='tienda')return;
+        const button=$('refreshAccount');button.disabled=true;
+        try{await authentication.reload(currentUser);const synced=await syncShopEmail(currentShopProfile);$('accountCurrentEmail').textContent=currentUser?.email||'';if(currentUser)$('shopAccountEmail').textContent=currentUser.email||'';if(currentUser&&synced)$('accountStateMessage').textContent='Correo de acceso: '+currentUser.email+'. Si acabas de confirmarlo y no ha cambiado, cierra sesión y entra con el nuevo correo.';}
+        catch(error){$('accountStateMessage').textContent=window.CATALOGO_ACCOUNT.errorMessage(error);}
+        finally{button.disabled=false;}
+      };
     }
     if (catalogPage) ['search','category','sort'].forEach(id => $(id).addEventListener('input', render));
     if (adminPage) {
@@ -217,21 +265,33 @@
       $('goShops').onclick = () => showAdminView('shops');
       $('openCalculator').onclick = () => showCalculator(true);
       $('closeCalculator').onclick = () => showAdminView('home');
-      $('resetProduct').onclick = () => { $('productForm').reset(); $('formTitle').textContent = 'Nuevo producto'; };
+      function productFeedback(message,kind='info'){$('productMessage').textContent=message;$('productMessage').dataset.kind=kind;}
+      $('resetProduct').onclick = () => { $('productForm').reset(); $('formTitle').textContent = 'Nuevo producto'; productFeedback(''); };
       $('productForm').onsubmit = async event => {
-        event.preventDefault(); if (!admin) return;
-        const f = event.currentTarget, fields = f.elements, price = Number(fields.precio.value), trade = Number(fields.mayorista.value), minimum = Number(fields.minimo.value);
-        if (![price,trade,minimum].every(Number.isFinite) || price < 0 || trade < 0 || !Number.isInteger(minimum) || minimum < 1 || !fields.nombre.value.trim()) { status('Revisa el nombre, los precios y el pedido mínimo.'); return; }
-        $('saveProduct').disabled = true;
-        try {
-          const id = fields.id.value || database.push(path('dev3dCatalogoPublico')).key;
-          let image = fields.imagen.value.trim(); const file = fields.foto.files[0];
-          if (file) { if (!file.type.startsWith('image/') || file.size >= 8*1024*1024) throw new Error('Elige una imagen de menos de 8 MB.'); const imageRef = storageSDK.ref(storage,`productos/dev3d-catalogo/${id}_${Date.now()}`); await storageSDK.uploadBytes(imageRef,file,{contentType:file.type}); image = await storageSDK.getDownloadURL(imageRef); }
-          if (image && !safeUrl(image)) throw new Error('La URL de imagen no es válida.');
-          await database.update(path(''),{[`dev3dCatalogoPublico/${id}`]:{nombre:fields.nombre.value.trim(),descripcion:fields.descripcion.value.trim(),categoria:fields.categoria.value.trim(),imagen:image,precio:price},[`dev3dCatalogoMayorista/${id}`]:{precio:trade,minimo:minimum}});
-          f.reset(); $('formTitle').textContent = 'Nuevo producto'; status('Producto guardado.');
-        } catch (error) { status(error.message?.startsWith('Elige') || error.message?.startsWith('La URL') ? error.message : 'No se pudo guardar. Comprueba la conexión y tus permisos.'); }
-        finally { $('saveProduct').disabled = false; }
+        event.preventDefault();if(productSaving)return;
+        if(!admin){productFeedback('Inicia sesión con una cuenta de administrador para guardar productos.','error');return;}
+        const f=event.currentTarget,fields=f.elements;
+        let values;
+        try{values=window.CATALOGO_PRODUCTS.validate(Object.fromEntries(['nombre','descripcion','categoria','precio','mayorista','minimo'].map(key=>[key,fields[key].value])));}
+        catch(error){productFeedback(error.message,'error');fields[error.field]?.focus();return;}
+        if(typeof navigator!=='undefined'&&navigator.onLine===false){productFeedback('No hay conexión. Conéctate a internet antes de guardar el producto.','error');return;}
+        productSaving=true;const button=$('saveProduct');button.disabled=true;button.textContent='Guardando…';$('resetProduct').disabled=true;f.setAttribute('aria-busy','true');productFeedback('Guardando el producto…');
+        const waiting=setTimeout(()=>productFeedback('El guardado está tardando. Comprueba la conexión; Firebase todavía no ha confirmado el producto.'),8000);
+        try{
+          const id=fields.id.value||database.push(path('dev3dCatalogoPublico')).key;
+          let image=fields.imagen.value.trim();const file=fields.foto.files[0];
+          if(file){
+            if(!file.type.startsWith('image/')||file.size>=8*1024*1024)throw Object.assign(new Error('Elige una imagen de menos de 8 MB.'),{code:'product/image'});
+            productFeedback('Subiendo la fotografía…');button.textContent='Subiendo foto…';
+            const imageRef=storageSDK.ref(storage,'productos/dev3d-catalogo/'+id+'_'+Date.now());
+            await storageSDK.uploadBytes(imageRef,file,{contentType:file.type});image=await storageSDK.getDownloadURL(imageRef);
+            productFeedback('Fotografía subida. Guardando el producto…');button.textContent='Guardando…';
+          }
+          if(image&&!safeUrl(image))throw Object.assign(new Error('La URL de la imagen debe comenzar por https:// o http://.'),{code:'product/image-url'});
+          await database.update(path(''),{['dev3dCatalogoPublico/'+id]:{nombre:values.nombre,descripcion:values.descripcion,categoria:values.categoria,imagen:image,precio:values.precio},['dev3dCatalogoMayorista/'+id]:{precio:values.mayorista,minimo:values.minimo}});
+          f.reset();$('formTitle').textContent='Nuevo producto';productFeedback('Producto guardado. Ya está publicado en el catálogo.','success');
+        }catch(error){productFeedback(window.CATALOGO_PRODUCTS.errorMessage(error),'error');}
+        finally{clearTimeout(waiting);productSaving=false;button.disabled=false;button.textContent='Guardar producto';$('resetProduct').disabled=false;f.removeAttribute('aria-busy');}
       };
       $('resetShop').onclick = () => resetShopForm();
       $('shopForm').onsubmit = async event => {
@@ -260,7 +320,7 @@
     }
     authentication.onAuthStateChanged(auth, async user => {
       const version = ++generation;
-      resetSubscriptions(); currentUser = user; wholesale = {}; publicProducts = {}; shops = {};
+      resetSubscriptions(); currentUser = user; currentShopProfile = null; wholesale = {}; publicProducts = {}; shops = {};
       admin = window.CATALOGO_NAVIGATION.roleFor(user,null,window.CATALOGO_CONFIG.ADMIN_EMAILS) === 'admin';
       setSessionUI(admin ? 'admin' : user ? 'member' : 'public');
       if (shopPage && admin) { location.replace('admin.html'); return; }
@@ -284,7 +344,9 @@
           if (tradeStop) { tradeStop(); tradeStop = null; }
           wholesale = {};
           const role = window.CATALOGO_NAVIGATION.roleFor(user,profile,window.CATALOGO_CONFIG.ADMIN_EMAILS);
+          currentShopProfile=profile;
           setSessionUI(role,profile);
+          if(shopPage)syncShopEmail(profile);
           if (catalogPage) {
             render();
             $('mode').textContent = role === 'shop' ? 'Tu tarifa de tienda está activa. Consulta el precio mayorista y el mínimo de cada producto.' : 'Tu cuenta no tiene acceso mayorista. Contacta con DEV3D Studio para solicitarlo.';
