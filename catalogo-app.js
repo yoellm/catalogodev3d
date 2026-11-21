@@ -243,7 +243,7 @@
         if(!shopView&&!checkingShop)pricing.append(el('p',money(p.precio),'price'),el('small','Precio de venta al público'));
         if(validTrade(wholesale[id])){
           const trade=wholesale[id],total=Math.round(trade.precio*100)*trade.minimo/100,box=el('div',undefined,'wholesale');
-          box.append(el('strong',money(trade.precio)+' / unidad','wholesale-unit'),el('p','Pedido mínimo: '+trade.minimo+(trade.minimo===1?' unidad':' unidades'),'wholesale-minimum'),el('span','Total del pedido mínimo','wholesale-total-label'),el('strong',money(total),'wholesale-total'));
+          box.append(el('strong',money(trade.precio)+' / unidad','wholesale-unit'),el('p','Pedido mínimo: '+trade.minimo+(trade.minimo===1?' unidad':' unidades')+' por color','wholesale-minimum'),el('span','Total del mínimo por color','wholesale-total-label'),el('strong',money(total),'wholesale-total'));
           pricing.append(box);
         }else if(shopView||checkingShop)pricing.append(el('p',checkingShop?'Comprobando tus condiciones…':'Precio mayorista pendiente de configurar. Consúltanos para este producto.','wholesale-pending'));
         card.append(photo,body); $('grid').append(card);
@@ -283,12 +283,12 @@
       $('adminProductPage').textContent='Página '+adminProductPage+' de '+pages;
       $('adminProductPrev').disabled=adminProductPage===1;$('adminProductNext').disabled=adminProductPage===pages;
       const table=el('table',undefined,'product-management-table'),head=el('thead'),heading=el('tr'),body=el('tbody');
-      for(const title of ['Producto','Precio público','Mayorista / ud.','Mínimo','Acciones']){const th=el('th',title);th.scope='col';heading.append(th);}head.append(heading);table.append(head,body);
+      for(const title of ['Producto','Precio público','Mayorista / ud.','Mínimo por color','Acciones']){const th=el('th',title);th.scope='col';heading.append(th);}head.append(heading);table.append(head,body);
       entries.slice(start,start+pageSize).forEach(([id,p])=>{
         const row=el('tr'),product=el('td'),info=el('div',undefined,'product-row-info'),name=el('div');
         const url=safeUrl(p.imagen);if(url){const photo=el('img');photo.src=url;photo.alt='';photo.loading='lazy';info.append(photo);}
         name.append(el('strong',p.nombre),el('small',p.categoria||'Sin categoría'));info.append(name);product.append(info);row.append(product);
-        for(const [label,value] of [['Precio público',money(p.precio)],['Mayorista / ud.',wholesale[id]?money(wholesale[id].precio):'Sin configurar'],['Mínimo',wholesale[id]?.minimo?wholesale[id].minimo+' uds.':'—']]){const cell=el('td',value);cell.dataset.label=label;row.append(cell);}
+        for(const [label,value] of [['Precio público',money(p.precio)],['Mayorista / ud.',wholesale[id]?money(wholesale[id].precio):'Sin configurar'],['Mínimo por color',wholesale[id]?.minimo?wholesale[id].minimo+' uds.':'—']]){const cell=el('td',value);cell.dataset.label=label;row.append(cell);}
         const actions=el('td'),buttons=el('div',undefined,'product-row-actions'),edit=el('button','Editar','secondary'),remove=el('button','Eliminar','danger-button');
         edit.setAttribute('aria-label','Editar '+p.nombre);remove.setAttribute('aria-label','Eliminar '+p.nombre);
         edit.onclick=()=>{if(productSaving)return;const f=$('productForm');f.reset();uploadedPhoto=null;$('productMessage').textContent='';for(const key of ['nombre','descripcion','categoria','imagen','precio'])f.elements[key].value=p[key]??'';f.elements.id.value=id;f.elements.mayorista.value=wholesale[id]?.precio??'';f.elements.minimo.value=wholesale[id]?.minimo??1;$('formTitle').textContent='Editar producto';showProductEditor(true);};
@@ -455,7 +455,7 @@
           if(shopPage)syncShopEmail(profile);
           if (catalogPage) {
             render();
-            $('mode').textContent = role === 'shop' ? 'Precios mayoristas por unidad y total del pedido mínimo de cada producto.' : 'Tu cuenta no tiene acceso mayorista. Contacta con DEV3D Studio para solicitarlo.';
+            $('mode').textContent = role === 'shop' ? 'Precios mayoristas por unidad y total mínimo por color. El mínimo se aplica a cada color por separado; no se suman unidades de colores distintos.' : 'Tu cuenta no tiene acceso mayorista. Contacta con DEV3D Studio para solicitarlo.';
             if (role === 'shop') tradeStop = database.onValue(path('dev3dCatalogoMayorista'), snap => { if (version === generation) { wholesale = snap.val() || {}; render(); } }, () => { if (version === generation) { wholesale = {}; render(); status('No se pudieron consultar tus precios mayoristas.'); } });
           }
         });
