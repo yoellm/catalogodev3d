@@ -9,6 +9,11 @@
   const money = value => new Intl.NumberFormat('es-ES', {style:'currency',currency:'EUR'}).format(value);
   let publicProducts = {}, wholesale = {}, shops = {}, currentUser = null, currentShopProfile = null, admin = false, generation = 0;
   let subscriptions = [], tradeStop = null, productHashHandled = false, calculatorInstance = null, productSaving = false, uploadedPhoto = null;
+  let adminProductPage = 1;
+  function showProductEditor(open) {
+    $('productForm').hidden = !open; $('productListPanel').hidden = open;
+    if(open) $('productForm').scrollIntoView({behavior:'smooth',block:'start'});
+  }
   const status = message => { $('status').textContent = message; };
   function el(tag, text, className) { const node = document.createElement(tag); if (text !== undefined) node.textContent = text; if (className) node.className = className; return node; }
   function safeUrl(value) { try { const url = new URL(value); return ['https:','http:'].includes(url.protocol) ? url.href : ''; } catch { return ''; } }
@@ -73,6 +78,7 @@
         for (const [key,value] of Object.entries(draft)) form.elements[key].value = value;
         $('formTitle').textContent = 'Nuevo producto desde la calculadora';
         showAdminView('catalog');
+        uploadedPhoto=null; showProductEditor(true);
         status('Precios y mínimo preparados. Añade la foto y la categoría, revisa los datos y pulsa Guardar producto para publicarlo.');
         form.scrollIntoView({behavior:'smooth'});
     return true;
@@ -237,14 +243,33 @@
       $('dashboardProducts').textContent = Object.keys(publicProducts).length + ' productos';
       $('dashboardShops').textContent = Object.keys(shops).length + ' tiendas';
       $('adminProducts').replaceChildren();
-      Object.entries(publicProducts).forEach(([id,p]) => {
-        const row = el('div',undefined,'admin-row'), edit = el('button','Editar'), remove = el('button','Eliminar','secondary');
-        row.append(el('strong',p.nombre),el('p',`Público: ${money(p.precio)} · Mayorista: ${wholesale[id] ? money(wholesale[id].precio) : 'Sin configurar'} · Mínimo: ${wholesale[id]?.minimo ?? '?'}`));
-        edit.onclick = () => { const f = $('productForm'); f.reset(); for (const key of ['nombre','descripcion','categoria','imagen','precio']) f.elements[key].value = p[key] ?? ''; f.elements.id.value = id; f.elements.mayorista.value = wholesale[id]?.precio ?? ''; f.elements.minimo.value = wholesale[id]?.minimo ?? 1; $('formTitle').textContent = 'Editar producto'; f.scrollIntoView({behavior:'smooth'}); };
-        remove.onclick = async () => { if (!confirm(`¿Eliminar «${p.nombre}» del catálogo?`)) return; try { await database.update(path(''),{[`dev3dCatalogoPublico/${id}`]:null,[`dev3dCatalogoMayorista/${id}`]:null}); } catch { status('No se pudo eliminar el producto.'); } };
-        row.append(edit,remove); $('adminProducts').append(row);
+      const normalize = value => String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+      const selected=$('adminProductCategory').value, query=normalize($('adminProductSearch').value).trim();
+      const categories=[...new Set(Object.values(publicProducts).map(p=>p.categoria).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'es'));
+      $('adminProductCategory').replaceChildren(...['',...categories].map(value=>{const option=el('option',value||'Todas las categorías');option.value=value;return option;}));
+      $('adminProductCategory').value=categories.includes(selected)?selected:'';
+      const entries=Object.entries(publicProducts).filter(([,p])=>(!$('adminProductCategory').value||p.categoria===$('adminProductCategory').value)&&normalize([p.nombre,p.categoria,p.descripcion].join(' ')).includes(query));
+      const sort=$('adminProductSort').value;
+      entries.sort((a,b)=> (sort==='price-asc'?Number(a[1].precio)-Number(b[1].precio):sort==='price-desc'?Number(b[1].precio)-Number(a[1].precio):0)||String(a[1].nombre).localeCompare(String(b[1].nombre),'es')||a[0].localeCompare(b[0]));
+      const pageSize=12,pages=Math.max(1,Math.ceil(entries.length/pageSize));adminProductPage=Math.min(adminProductPage,pages);
+      const start=(adminProductPage-1)*pageSize;
+      $('adminProductCount').textContent=entries.length+' de '+Object.keys(publicProducts).length+' productos';
+      $('adminProductPage').textContent='Página '+adminProductPage+' de '+pages;
+      $('adminProductPrev').disabled=adminProductPage===1;$('adminProductNext').disabled=adminProductPage===pages;
+      const table=el('table',undefined,'product-management-table'),head=el('thead'),heading=el('tr'),body=el('tbody');
+      for(const title of ['Producto','Precio público','Mayorista / ud.','Mínimo','Acciones']){const th=el('th',title);th.scope='col';heading.append(th);}head.append(heading);table.append(head,body);
+      entries.slice(start,start+pageSize).forEach(([id,p])=>{
+        const row=el('tr'),product=el('td'),info=el('div',undefined,'product-row-info'),name=el('div');
+        const url=safeUrl(p.imagen);if(url){const photo=el('img');photo.src=url;photo.alt='';photo.loading='lazy';info.append(photo);}
+        name.append(el('strong',p.nombre),el('small',p.categoria||'Sin categoría'));info.append(name);product.append(info);row.append(product);
+        for(const [label,value] of [['Precio público',money(p.precio)],['Mayorista / ud.',wholesale[id]?money(wholesale[id].precio):'Sin configurar'],['Mínimo',wholesale[id]?.minimo?wholesale[id].minimo+' uds.':'—']]){const cell=el('td',value);cell.dataset.label=label;row.append(cell);}
+        const actions=el('td'),buttons=el('div',undefined,'product-row-actions'),edit=el('button','Editar','secondary'),remove=el('button','Eliminar','danger-button');
+        edit.setAttribute('aria-label','Editar '+p.nombre);remove.setAttribute('aria-label','Eliminar '+p.nombre);
+        edit.onclick=()=>{if(productSaving)return;const f=$('productForm');f.reset();uploadedPhoto=null;$('productMessage').textContent='';for(const key of ['nombre','descripcion','categoria','imagen','precio'])f.elements[key].value=p[key]??'';f.elements.id.value=id;f.elements.mayorista.value=wholesale[id]?.precio??'';f.elements.minimo.value=wholesale[id]?.minimo??1;$('formTitle').textContent='Editar producto';showProductEditor(true);};
+        remove.onclick=async()=>{if(!admin||!confirm('¿Eliminar «'+p.nombre+'» del catálogo?'))return;remove.disabled=true;try{await database.update(path(''),{['dev3dCatalogoPublico/'+id]:null,['dev3dCatalogoMayorista/'+id]:null});$('catalogListMessage').textContent='Producto eliminado.';$('catalogListMessage').dataset.kind='success';}catch{$('catalogListMessage').textContent='No se pudo eliminar el producto. Comprueba la conexión y tus permisos.';$('catalogListMessage').dataset.kind='error';}finally{remove.disabled=false;}};
+        buttons.append(edit,remove);actions.append(buttons);row.append(actions);body.append(row);
       });
-      if (!Object.keys(publicProducts).length) $('adminProducts').append(el('p','Todavía no hay productos. Crea el primero desde el formulario.','empty-list'));
+      if(entries.length)$('adminProducts').append(table);else $('adminProducts').append(el('p',Object.keys(publicProducts).length?'No hay productos que coincidan. Prueba otra búsqueda o categoría.':'Todavía no hay productos. Pulsa «Nuevo producto» para crear el primero.','empty-list'));
       $('shops').replaceChildren();
       if (!Object.keys(shops).length) $('shops').append(el('p','Todavía no hay tiendas. Da de alta la primera desde el formulario.','empty-list'));
       Object.entries(shops).forEach(([uid,s]) => { const row = el('div',undefined,'admin-row'), edit = el('button','Editar acceso'), remove = el('button','Eliminar tienda','danger-button'); row.append(el('strong',s.nombre),el('p',(s.email ? s.email + ' · ' : '') + (s.activo ? 'Tienda autorizada' : 'Acceso desactivado'))); edit.onclick = () => { resetShopForm(); const f = $('shopForm'); f.elements.uid.value = uid; f.elements.nombre.value = s.nombre; f.elements.activo.value = String(s.activo); $('shopCredentials').hidden = true; f.elements.email.required = false; f.elements.password.required = false; $('shopEditEmail').hidden = false; $('shopEditEmail').textContent = s.email || 'Cuenta ya autorizada'; $('shopFormTitle').textContent = 'Editar acceso de tienda'; $('saveShop').textContent = 'Guardar acceso'; f.scrollIntoView({behavior:'smooth'}); }; remove.onclick=async()=>{
@@ -300,7 +325,11 @@
       $('openCalculator').onclick = () => showCalculator(true);
       $('closeCalculator').onclick = () => showAdminView('home');
       function productFeedback(message,kind='info'){$('productMessage').textContent=message;$('productMessage').dataset.kind=kind;}
-      $('resetProduct').onclick = () => { $('productForm').reset(); $('formTitle').textContent = 'Nuevo producto'; uploadedPhoto=null; productFeedback(''); };
+      $('resetProduct').onclick = () => { if(productSaving)return;$('productForm').reset(); $('formTitle').textContent = 'Nuevo producto'; uploadedPhoto=null; productFeedback('');showProductEditor(false); };
+      $('newProduct').onclick=()=>{if(productSaving)return;$('productForm').reset();uploadedPhoto=null;$('formTitle').textContent='Nuevo producto';productFeedback('');$('catalogListMessage').textContent='';showProductEditor(true);$('productForm').elements.nombre.focus();};
+      for(const id of ['adminProductSearch','adminProductCategory','adminProductSort'])$(id).oninput=()=>{adminProductPage=1;renderAdmin();};
+      $('adminProductPrev').onclick=()=>{if(adminProductPage>1){adminProductPage--;renderAdmin();}};
+      $('adminProductNext').onclick=()=>{adminProductPage++;renderAdmin();};
       $('productForm').onsubmit = async event => {
         event.preventDefault();if(productSaving)return;
         if(!admin){productFeedback('Inicia sesión con una cuenta de administrador para guardar productos.','error');return;}
@@ -332,6 +361,7 @@
           if(image&&!safeUrl(image))throw Object.assign(new Error('La URL de la imagen debe comenzar por https:// o http://.'),{code:'product/image-url'});
           await database.update(path(''),{['dev3dCatalogoPublico/'+id]:{nombre:values.nombre,descripcion:values.descripcion,categoria:values.categoria,imagen:image,precio:values.precio},['dev3dCatalogoMayorista/'+id]:{precio:values.mayorista,minimo:values.minimo}});
           f.reset();uploadedPhoto=null;$('formTitle').textContent='Nuevo producto';productFeedback('Producto guardado. Ya está publicado en el catálogo.'+(photoSummary?' '+photoSummary:''),'success');
+          $('catalogListMessage').textContent=$('productMessage').textContent;$('catalogListMessage').dataset.kind='success';showProductEditor(false);
         }catch(error){productFeedback(window.CATALOGO_PRODUCTS.errorMessage(error),'error');}
         finally{clearTimeout(waiting);productSaving=false;button.disabled=false;button.textContent='Guardar producto';$('resetProduct').disabled=false;f.removeAttribute('aria-busy');}
       };
@@ -368,6 +398,7 @@
       if (shopPage && admin) { location.replace('admin.html'); return; }
       if (adminPage) {
         resetShopForm(); $('rulesNotice').hidden = true;
+        adminProductPage=1;uploadedPhoto=null;showProductEditor(false);
         $('adminPanel').hidden = !admin; $('adminProducts').replaceChildren(); $('shops').replaceChildren(); $('productForm').reset();
         if (admin) { status(''); showAdminView(location.hash === '#calculadora' ? 'calculator' : 'home'); }
         else { if(calculatorInstance){calculatorInstance.destroy();calculatorInstance=null;} $('calculatorMount').replaceChildren(); document.body.dataset.adminView = ''; $('calculatorPanel').hidden = true; $('productWorkspace').hidden = true; $('shopsView').hidden = true; $('closeCalculator').hidden = true; status(''); }
