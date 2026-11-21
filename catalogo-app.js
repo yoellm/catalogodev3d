@@ -122,7 +122,31 @@
       status(adminPage ? 'No se pudieron cargar los datos. Comprueba la conexión y las reglas de acceso del catálogo.' : 'El catálogo no está disponible en este momento. Inténtalo de nuevo más tarde.');
     })); };
     function resetSubscriptions() { subscriptions.forEach(stop => stop()); subscriptions = []; if (tradeStop) { tradeStop(); tradeStop = null; } }
-    function openLogin() { $('mainMenu').open = false; $('loginError').textContent = ''; $('loginDialog').showModal(); }
+    let resetSending = false;
+    function showLogin() { $('passwordResetForm').hidden = true; $('loginForm').hidden = false; $('loginError').textContent = ''; }
+    function openLogin() { $('mainMenu').open = false; showLogin(); $('loginDialog').showModal(); }
+    $('forgotPassword').onclick = () => {
+      $('passwordResetForm').elements.email.value = $('loginForm').elements.email.value.trim();
+      $('loginForm').elements.password.value = '';
+      $('passwordResetMessage').textContent = '';
+      $('loginForm').hidden = true; $('passwordResetForm').hidden = false;
+      $('passwordResetForm').elements.email.focus();
+    };
+    $('backToLogin').onclick = showLogin;
+    $('passwordResetForm').onsubmit = async event => {
+      event.preventDefault(); if (resetSending) return;
+      const field = event.currentTarget.elements.email, email = field.value.trim(), message = $('passwordResetMessage');
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { message.textContent = 'Introduce un correo electrónico válido.'; field.focus(); return; }
+      resetSending = true; $('sendPasswordReset').disabled = true; message.textContent = 'Enviando el enlace…';
+      const sent = 'Si existe una cuenta con ese correo, recibirás un enlace para restablecer la contraseña. Revisa también la carpeta de spam. Tu contraseña no cambia hasta que completes el enlace.';
+      try { auth.languageCode = 'es'; await authentication.sendPasswordResetEmail(auth, email); message.textContent = sent; }
+      catch (error) {
+        if (error?.code === 'auth/user-not-found') message.textContent = sent;
+        else if (error?.code === 'auth/too-many-requests') message.textContent = 'Se han realizado demasiados intentos. Espera unos minutos y vuelve a probar.';
+        else message.textContent = 'No se ha podido enviar el enlace. Comprueba la conexión e inténtalo de nuevo.';
+      }
+      finally { resetSending = false; $('sendPasswordReset').disabled = false; }
+    };
     $('loginOpen').onclick = openLogin;
     if (homePage) $('homeShopLogin').onclick = openLogin;
     if (adminPage || shopPage) $('gateLogin').onclick = openLogin;
