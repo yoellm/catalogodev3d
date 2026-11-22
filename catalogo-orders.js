@@ -4,6 +4,7 @@
   function quote(lines,{products,wholesale={},shop=false,checking=false},{enforceMinimum=true}={}){
     const errors=[],groups=new Map(),items=[];let cents=0;
     if(checking)return {items:[],errors:['Espera a que se comprueben tus condiciones de acceso.'],totalCents:0,valid:false};
+    if(!shop)return {items:[],errors:['Los pedidos están disponibles solo para tiendas mayoristas autorizadas.'],totalCents:0,valid:false};
     for(const line of lines){
       const product=products[line.id];if(!product){errors.push('Un producto ya no está en el catálogo. Elimínalo del pedido.');continue;}
       const color=String(line.color||'').trim(),qty=Number(line.quantity),trade=wholesale[line.id];

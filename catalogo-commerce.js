@@ -12,6 +12,8 @@
       if(!p){$('detailAdd').disabled=true;$('detailPrice').textContent='Este producto ya no está disponible.';return;}
       $('detailAvailability').textContent=products.availability(p)+ ' · '+(p.plazo||'Plazo a confirmar');
       $('detailAvailability').dataset.state=p.estado||'disponible';
+      if(!state.shop||state.checking){$('detailOrderForm').hidden=true;$('detailAdd').disabled=true;$('detailPrice').textContent='';return;}
+      $('detailOrderForm').hidden=false;
       const trade=state.wholesale[activeId],price=state.shop?trade?.precio:p.precio,min=state.shop?trade?.minimo:1;
       $('detailMinimum').textContent=state.shop?'Mínimo: '+(min||'pendiente')+' unidades por color. Puedes combinar personalizaciones del mismo color.':'Elige el color y la cantidad que necesitas.';
       const quantity=Number($('detailQuantity').value);
@@ -33,7 +35,10 @@
       $('catalogDetailDialog').showModal();$('catalogDetailDialog').scrollTop=0;bodyLock();
     }
     function renderCart(){
-      const state=getState(),result=orders.quote(lines,state);$('orderOpen').textContent='Mi pedido ('+lines.reduce((sum,line)=>sum+Number(line.quantity||0),0)+')';
+      const state=getState(),allowed=state.shop&&!state.checking;
+      $('orderOpen').hidden=!allowed;$('detailOrderForm').hidden=!allowed;
+      if(!allowed){if(!state.checking)lines=[];$('orderLines').replaceChildren();$('orderErrors').replaceChildren();$('orderTotal').textContent=money(0);$('sendOrder').disabled=true;$('orderOpen').textContent='Mi pedido (0)';if($('orderCartDialog').open)$('orderCartDialog').close();return;}
+      const result=orders.quote(lines,state);$('orderOpen').textContent='Mi pedido ('+lines.reduce((sum,line)=>sum+Number(line.quantity||0),0)+')';
       $('orderLines').replaceChildren();
       if(!lines.length)$('orderLines').append(el('p','Todavía no has añadido productos. Abre «Ver detalles» para elegir color, cantidad y personalización.','empty-list'));
       lines.forEach((line,index)=>{
@@ -48,14 +53,15 @@
     }
     $('detailQuantity').oninput=updateDetail;
     $('detailOrderForm').onsubmit=event=>{
-      event.preventDefault();const line=detailLine(),state=getState(),result=orders.quote([line],state,{enforceMinimum:false});
+      event.preventDefault();const state=getState();if(!state.shop||state.checking){$('detailOrderMessage').textContent='Los pedidos están disponibles solo para tiendas mayoristas autorizadas.';return;}
+      const line=detailLine(),result=orders.quote([line],state,{enforceMinimum:false});
       if(result.errors.length){$('detailOrderMessage').textContent=result.errors[0];return;}
       if(lines.length>=30){$('detailOrderMessage').textContent='El pedido admite hasta 30 líneas. Envía este pedido antes de añadir más.';return;}
       const same=lines.find(item=>item.id===line.id&&orders.key(item.color)===orders.key(line.color)&&item.customization===line.customization&&item.notes===line.notes);
       if(same){if(same.quantity+line.quantity>10000){$('detailOrderMessage').textContent='La cantidad máxima por línea es 10.000.';return;}same.quantity+=line.quantity;}else lines.push({...line,lineKey:++sequence});
       $('detailOrderMessage').textContent='Añadido al pedido. Puedes elegir otra personalización o revisar el pedido.';renderCart();
     };
-    function openCart(){renderCart();const state=getState(),fields=$('orderCheckout').elements;fields.name.value=fields.name.value||state.profile?.nombre||'';fields.email.value=fields.email.value||state.user?.email||'';$('catalogDetailDialog').close();$('orderCartDialog').showModal();bodyLock();}
+    function openCart(){const state=getState();if(!state.shop||state.checking)return;renderCart();const fields=$('orderCheckout').elements;fields.name.value=fields.name.value||state.profile?.nombre||'';fields.email.value=fields.email.value||state.user?.email||'';$('catalogDetailDialog').close();$('orderCartDialog').showModal();bodyLock();}
     $('orderOpen').onclick=openCart;$('detailViewOrder').onclick=openCart;
     $('orderClose').onclick=()=>$('orderCartDialog').close();$('orderCartDialog').onclose=bodyLock;
     $('closeCatalogDetail').onclick=()=>$('catalogDetailDialog').close();$('catalogDetailDialog').onclose=bodyLock;

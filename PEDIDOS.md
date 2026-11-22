@@ -1,6 +1,6 @@
 # Pedidos y opciones de producto
 
-El catálogo público permite preparar solicitudes a precio público. Las tiendas activas utilizan exclusivamente su tarifa mayorista. El mínimo se suma por producto y color: varias personalizaciones del mismo color pueden completarlo; colores distintos no se suman. Las cantidades no necesitan ser múltiplos del mínimo.
+Los pedidos se permiten únicamente a tiendas mayoristas activas. Visitantes, administradores y cuentas sin acceso mayorista pueden consultar el catálogo y los detalles, pero no preparar ni enviar pedidos. Los enlaces de Wallapop siguen disponibles en la vista pública. Las tiendas activas utilizan exclusivamente su tarifa mayorista. El mínimo se suma por producto y color: varias personalizaciones del mismo color pueden completarlo; colores distintos no se suman. Las cantidades no necesitan ser múltiplos del mínimo.
 
 Los pedidos se preparan en memoria en la pestaña del catálogo. Al recargar, salir de la página o cambiar de cuenta/tarifa se vacían. No se guardan datos de pedidos en Firebase ni se reserva inventario. El usuario revisa el resumen en WhatsApp y debe pulsar Enviar. Los precios y la disponibilidad se vuelven a comprobar antes de abrir WhatsApp. Envío y condiciones finales quedan a confirmar.
 
