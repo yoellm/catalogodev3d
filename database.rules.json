@@ -60,6 +60,27 @@
         },
         "wallapop": {
           ".validate": "newData.isString() && newData.val().length <= 2000 && (newData.val() == '' || newData.val().matches(/^https:\\/\\/([a-zA-Z0-9-]+\\.)*wallapop\\.com(\\/[^ ]*)?$/))"
+        },
+        "imagenes": {
+          ".validate": "newData.hasChildren()",
+          "$index": {
+            ".validate": "$index.matches(/^[0-5]$/) && newData.isString() && newData.val().length <= 2000"
+          }
+        },
+        "colores": {
+          ".validate": "newData.hasChildren()",
+          "$index": {
+            ".validate": "$index.matches(/^([0-9]|[12][0-9])$/) && newData.isString() && newData.val().length > 0 && newData.val().length <= 60"
+          }
+        },
+        "estado": {
+          ".validate": "newData.val() == 'disponible' || newData.val() == 'bajo_pedido' || newData.val() == 'agotado'"
+        },
+        "plazo": {
+          ".validate": "newData.isString() && newData.val().length <= 150"
+        },
+        "personalizable": {
+          ".validate": "newData.isBoolean()"
         }
       }
     },

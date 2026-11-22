@@ -10,6 +10,7 @@
   let publicProducts = {}, wholesale = {}, shops = {}, currentUser = null, currentShopProfile = null, admin = false, generation = 0;
   let subscriptions = [], tradeStop = null, productHashHandled = false, calculatorInstance = null, productSaving = false, uploadedPhoto = null;
   let adminProductPage = 1;
+  const uploadedGallery=new Map();
   let categoryFromLink=catalogPage?new URL('https://www.dev3dstudio.es/catalogo.html'+(location.search||'')).searchParams.get('categoria'):null;
   function renderCategoryNavigation(){
     const categories=[...new Set(Object.values(publicProducts).map(p=>String(p.categoria||'').trim()||'Impresión 3D'))].sort((a,b)=>a.localeCompare(b,'es'));
@@ -28,6 +29,7 @@
   function el(tag, text, className) { const node = document.createElement(tag); if (text !== undefined) node.textContent = text; if (className) node.className = className; return node; }
   function productWatermark(container) { const logo=el('img',undefined,'product-watermark');logo.src='logo.png';logo.alt='';container.replaceChildren(logo); }
   function safeUrl(value) { try { const url = new URL(value); return ['https:','http:'].includes(url.protocol) ? url.href : ''; } catch { return ''; } }
+  const commerce=catalogPage&&window.CATALOGO_COMMERCE?window.CATALOGO_COMMERCE.mount({document,getState:()=>({products:publicProducts,wholesale,shop:!admin&&currentShopProfile?.rol==='tienda'&&currentShopProfile.activo===true,checking:!!currentUser&&!admin&&currentShopProfile===null,user:currentUser,profile:currentShopProfile}),orders:window.CATALOGO_ORDERS,products:window.CATALOGO_PRODUCTS,navigate:url=>location.assign(url)}):null;
   if (window.matchMedia) {
     const menu = $('mainMenu'), content = menu.querySelector('.menu-content');
     const desktop = el('div', undefined, 'desktop-account'); menu.after(desktop);
@@ -90,7 +92,7 @@
         for (const [key,value] of Object.entries(draft)) form.elements[key].value = value;
         $('formTitle').textContent = 'Nuevo producto desde la calculadora';
         showAdminView('catalog');
-        uploadedPhoto=null; showProductEditor(true);
+        uploadedPhoto=null;uploadedGallery.clear(); showProductEditor(true);
         status('Precios y mínimo preparados. Añade la foto y la categoría, revisa los datos y pulsa Guardar producto para publicarlo.');
         form.scrollIntoView({behavior:'smooth'});
     return true;
@@ -215,6 +217,7 @@
       });
     }
     function render() {
+      if(catalogPage)commerce?.sync();
       if (homePage) { renderFeatured(); return; }
       if (shopPage) { status(''); return; }
       if (adminPage) { renderAdmin(); return; }
@@ -240,26 +243,28 @@
       items.forEach(([id,p]) => {
         const card = el('article', undefined,'card'), photo = el('div',undefined,'photo'), body = el('div',undefined,'card-body');
         card.id = 'producto-' + id; card.tabIndex = -1;
-        const url = safeUrl(p.imagen);
+        const url = safeUrl(p.imagen)||window.CATALOGO_PRODUCTS.gallery(p)[0]||'';
         if (url) { const image = el('img'); image.src = url; image.alt = p.nombre; image.loading = 'lazy'; image.onerror = () => productWatermark(photo); photo.replaceChildren(image); }
         else productWatermark(photo);
         const title=el('h2',p.nombre);title.title=p.nombre;
         const preview=el('p',String(p.descripcion||'').replace(/\s+/g,' ').trim(),'description'),details=el('button','Ver detalles','product-details-link'),pricing=el('div',undefined,'catalog-pricing');
         details.type='button';details.setAttribute('aria-label','Ver detalles de '+p.nombre);
         details.onclick=()=>{
+          if(commerce){commerce.openProduct(id);return;}
           $('catalogDetailTitle').textContent=p.nombre;$('catalogDetailDescription').textContent=p.descripcion||'Este producto todavía no tiene una descripción.';
           $('catalogDetailPhoto').replaceChildren();$('catalogDetailPhoto').hidden=!url;
           if(url){const image=el('img');image.src=url;image.alt=p.nombre;$('catalogDetailPhoto').append(image);}
           $('catalogDetailDialog').showModal();$('catalogDetailDialog').scrollTop=0;document.body.classList?.add('catalog-detail-open');
         };
-        body.append(el('span',p.categoria || 'Impresión 3D','tag'),title,preview,details,pricing);
+        const availability=el('span',window.CATALOGO_PRODUCTS.availability(p),'availability-badge');availability.dataset.state=p.estado||'disponible';
+        body.append(el('span',p.categoria || 'Impresión 3D','tag'),title,availability,el('small',p.plazo||'Plazo a confirmar','product-lead-time'),preview,details,pricing);
         if(!shopView&&!checkingShop)pricing.append(el('p',money(p.precio),'price'),el('small','Precio de venta al público'));
         if(validTrade(wholesale[id])){
           const trade=wholesale[id],total=Math.round(trade.precio*100)*trade.minimo/100,box=el('div',undefined,'wholesale');
           box.append(el('strong',money(trade.precio)+' / unidad','wholesale-unit'),el('p','Pedido mínimo: '+trade.minimo+(trade.minimo===1?' unidad':' unidades')+' por color','wholesale-minimum'),el('span','Total del mínimo por color','wholesale-total-label'),el('strong',money(total),'wholesale-total'));
           pricing.append(box);
         }else if(shopView||checkingShop)pricing.append(el('p',checkingShop?'Comprobando tus condiciones…':'Precio mayorista pendiente de configurar. Consúltanos para este producto.','wholesale-pending'));
-        if(!shopView&&!checkingShop){const url=window.CATALOGO_PRODUCTS.wallapopUrl(p.wallapop);if(url){const link=el('a','Comprar en Wallapop ↗','wallapop-link');link.href=url;link.target='_blank';link.rel='noopener noreferrer';link.setAttribute('aria-label','Comprar '+p.nombre+' en Wallapop (abre otra pestaña)');pricing.append(link);}}
+        if(!shopView&&!checkingShop&&p.estado!=='agotado'){const url=window.CATALOGO_PRODUCTS.wallapopUrl(p.wallapop);if(url){const link=el('a','Comprar en Wallapop ↗','wallapop-link');link.href=url;link.target='_blank';link.rel='noopener noreferrer';link.setAttribute('aria-label','Comprar '+p.nombre+' en Wallapop (abre otra pestaña)');pricing.append(link);}}
         card.append(photo,body); $('grid').append(card);
       });
       status(items.length ? `${items.length} productos` : 'No hay productos para mostrar.');
@@ -303,11 +308,12 @@
         const url=safeUrl(p.imagen);if(url){const photo=el('img');photo.src=url;photo.alt='';photo.loading='lazy';info.append(photo);}
         name.append(el('strong',p.nombre),el('small',p.categoria||'Sin categoría'));info.append(name);product.append(info);row.append(product);
         for(const [label,value] of [['Precio público',money(p.precio)],['Mayorista / ud.',wholesale[id]?money(wholesale[id].precio):'Sin configurar'],['Mínimo por color',wholesale[id]?.minimo?wholesale[id].minimo+' uds.':'—']]){const cell=el('td',value);cell.dataset.label=label;row.append(cell);}
-        const actions=el('td'),buttons=el('div',undefined,'product-row-actions'),edit=el('button','Editar','secondary'),remove=el('button','Eliminar','danger-button');
+        const actions=el('td'),buttons=el('div',undefined,'product-row-actions'),edit=el('button','Editar','secondary'),duplicate=el('button','Duplicar','secondary'),remove=el('button','Eliminar','danger-button');
         edit.setAttribute('aria-label','Editar '+p.nombre);remove.setAttribute('aria-label','Eliminar '+p.nombre);
-        edit.onclick=()=>{if(productSaving)return;const f=$('productForm');f.reset();uploadedPhoto=null;$('productMessage').textContent='';for(const key of ['nombre','descripcion','categoria','imagen','precio','wallapop'])f.elements[key].value=p[key]??'';f.elements.id.value=id;f.elements.mayorista.value=wholesale[id]?.precio??'';f.elements.minimo.value=wholesale[id]?.minimo??1;$('formTitle').textContent='Editar producto';showProductEditor(true);};
+        edit.onclick=()=>{if(productSaving)return;const f=$('productForm');f.reset();uploadedPhoto=null;uploadedGallery.clear();$('productMessage').textContent='';for(const key of ['nombre','descripcion','categoria','imagen','precio','wallapop','plazo'])f.elements[key].value=p[key]??'';f.elements.estado.value=p.estado||'disponible';f.elements.colores.value=Object.values(p.colores||{}).join(', ');f.elements.personalizable.value=String(p.personalizable!==false);f.elements.galeria.value=window.CATALOGO_PRODUCTS.gallery(p).filter(url=>url!==safeUrl(p.imagen)).join('\n');f.elements.id.value=id;f.elements.mayorista.value=wholesale[id]?.precio??'';f.elements.minimo.value=wholesale[id]?.minimo??1;$('formTitle').textContent='Editar producto';showProductEditor(true);};
+        duplicate.setAttribute('aria-label','Duplicar '+p.nombre);duplicate.onclick=()=>{if(productSaving)return;edit.onclick();const f=$('productForm');f.elements.id.value='';f.elements.nombre.value=String(p.nombre).slice(0,142)+' (copia)';f.elements.wallapop.value='';$('formTitle').textContent='Duplicar producto';$('productMessage').textContent='Revisa los datos y guarda para publicar la copia. El producto original se conserva.';};
         remove.onclick=async()=>{if(!admin||!confirm('¿Eliminar «'+p.nombre+'» del catálogo?'))return;remove.disabled=true;try{await database.update(path(''),{['dev3dCatalogoPublico/'+id]:null,['dev3dCatalogoMayorista/'+id]:null});$('catalogListMessage').textContent='Producto eliminado.';$('catalogListMessage').dataset.kind='success';}catch{$('catalogListMessage').textContent='No se pudo eliminar el producto. Comprueba la conexión y tus permisos.';$('catalogListMessage').dataset.kind='error';}finally{remove.disabled=false;}};
-        buttons.append(edit,remove);actions.append(buttons);row.append(actions);body.append(row);
+        name.append(el('small',window.CATALOGO_PRODUCTS.availability(p)+(p.plazo?' · '+p.plazo:'')));buttons.append(edit,duplicate,remove);actions.append(buttons);row.append(actions);body.append(row);
       });
       if(entries.length)$('adminProducts').append(table);else $('adminProducts').append(el('p',Object.keys(publicProducts).length?'No hay productos que coincidan. Prueba otra búsqueda o categoría.':'Todavía no hay productos. Pulsa «Nuevo producto» para crear el primero.','empty-list'));
       $('shops').replaceChildren();
@@ -360,8 +366,8 @@
     if (catalogPage) {
       ['search','category','sort'].forEach(id => $(id).addEventListener('input', render));
       $('clearCatalogFilters').onclick=()=>{$('search').value='';$('category').value='';$('sort').value='name';render();};
-      $('closeCatalogDetail').onclick=()=>$('catalogDetailDialog').close();
-      $('catalogDetailDialog').onclose=()=>document.body.classList?.remove('catalog-detail-open');
+      if(!commerce){$('closeCatalogDetail').onclick=()=>$('catalogDetailDialog').close();
+      $('catalogDetailDialog').onclose=()=>document.body.classList?.remove('catalog-detail-open');}
     }
     if (adminPage) {
       function showCalculator(open) { showAdminView(open ? 'calculator' : 'catalog'); }
@@ -373,8 +379,8 @@
       $('closeProductDialog').onclick=()=>{if(!productSaving)showProductEditor(false);};
       $('productDialog').oncancel=event=>{if(productSaving)event.preventDefault();};
       $('productDialog').onclose=()=>{$('productForm').hidden=true;document.body.classList?.remove('product-modal-open');};
-      $('resetProduct').onclick = () => { if(productSaving)return;$('productForm').reset(); $('formTitle').textContent = 'Nuevo producto'; uploadedPhoto=null; productFeedback('');showProductEditor(false); };
-      $('newProduct').onclick=()=>{if(productSaving)return;$('productForm').reset();uploadedPhoto=null;$('formTitle').textContent='Nuevo producto';productFeedback('');$('catalogListMessage').textContent='';showProductEditor(true);$('productForm').elements.nombre.focus();};
+      $('resetProduct').onclick = () => { if(productSaving)return;$('productForm').reset(); $('formTitle').textContent = 'Nuevo producto'; uploadedPhoto=null;uploadedGallery.clear(); productFeedback('');showProductEditor(false); };
+      $('newProduct').onclick=()=>{if(productSaving)return;$('productForm').reset();uploadedPhoto=null;uploadedGallery.clear();$('formTitle').textContent='Nuevo producto';productFeedback('');$('catalogListMessage').textContent='';showProductEditor(true);$('productForm').elements.nombre.focus();};
       for(const id of ['adminProductSearch','adminProductCategory','adminProductSort'])$(id).oninput=()=>{adminProductPage=1;renderAdmin();};
       $('adminProductPrev').onclick=()=>{if(adminProductPage>1){adminProductPage--;renderAdmin();}};
       $('adminProductNext').onclick=()=>{adminProductPage++;renderAdmin();};
@@ -383,7 +389,7 @@
         if(!admin){productFeedback('Inicia sesión con una cuenta de administrador para guardar productos.','error');return;}
         const f=event.currentTarget,fields=f.elements;
         let values;
-        try{values=window.CATALOGO_PRODUCTS.validate(Object.fromEntries(['nombre','descripcion','categoria','precio','mayorista','minimo','wallapop'].map(key=>[key,fields[key].value])));}
+        try{values=window.CATALOGO_PRODUCTS.validate(Object.fromEntries(['nombre','descripcion','categoria','precio','mayorista','minimo','wallapop','estado','plazo','colores','personalizable'].map(key=>[key,fields[key].value])));}
         catch(error){productFeedback(error.message,'error');fields[error.field]?.focus();return;}
         if(typeof navigator!=='undefined'&&navigator.onLine===false){productFeedback('No hay conexión. Conéctate a internet antes de guardar el producto.','error');return;}
         productSaving=true;const button=$('saveProduct');button.disabled=true;button.textContent='Guardando…';$('resetProduct').disabled=true;f.setAttribute('aria-busy','true');productFeedback('Guardando el producto…');
@@ -391,6 +397,10 @@
         try{
           const id=fields.id.value||database.push(path('dev3dCatalogoPublico')).key;
           let image=fields.imagen.value.trim();const file=fields.foto.files[0];
+          if(image&&!window.CATALOGO_PRODUCTS.imageUrl(image))throw Object.assign(new Error('La URL de la imagen debe comenzar por https:// o http://.'),{code:'product/image-url'});
+          const galleryUrls=fields.galeria.value.split(/\r?\n/).map(value=>value.trim()).filter(Boolean),extraFiles=[...fields.fotosExtra.files];
+          if(galleryUrls.some(url=>!window.CATALOGO_PRODUCTS.imageUrl(url)))throw Object.assign(new Error('Revisa las URLs de la galería: deben comenzar por https:// o http://.'),{code:'product/gallery'});
+          if(galleryUrls.length+extraFiles.length+((file||image)?1:0)>6)throw Object.assign(new Error('Se permiten hasta 6 fotos en total, incluida la principal.'),{code:'product/gallery'});
           let photoSummary='';
           if(file){
             if(uploadedPhoto?.file===file){image=uploadedPhoto.url;photoSummary=uploadedPhoto.summary;}
@@ -406,8 +416,14 @@
             }
             productFeedback(photoSummary+' Guardando el producto…');button.textContent='Guardando…';
           }
-          if(image&&!safeUrl(image))throw Object.assign(new Error('La URL de la imagen debe comenzar por https:// o http://.'),{code:'product/image-url'});
-          await database.update(path(''),{['dev3dCatalogoPublico/'+id]:{nombre:values.nombre,descripcion:values.descripcion,categoria:values.categoria,imagen:image,precio:values.precio,wallapop:values.wallapop},['dev3dCatalogoMayorista/'+id]:{precio:values.mayorista,minimo:values.minimo}});
+          for(const [index,extraFile] of extraFiles.entries()){
+            if(!uploadedGallery.has(extraFile)){productFeedback('Optimizando foto adicional '+(index+1)+' de '+extraFiles.length+'…');const optimized=await window.CATALOGO_IMAGES.compress(extraFile);const ref=storageSDK.ref(storage,'productos/dev3d-catalogo/'+id+'_galeria_'+index+'_'+Date.now()+'.'+optimized.extension);await storageSDK.uploadBytes(ref,optimized.blob,{contentType:optimized.type});uploadedGallery.set(extraFile,await storageSDK.getDownloadURL(ref));}
+            galleryUrls.push(uploadedGallery.get(extraFile));
+          }
+          if(image&&!window.CATALOGO_PRODUCTS.imageUrl(image))throw Object.assign(new Error('La URL de la imagen debe comenzar por https:// o http://.'),{code:'product/image-url'});
+          const imagenes=[...new Set([image,...galleryUrls].filter(Boolean))];image=image||imagenes[0]||'';
+          await database.update(path(''),{['dev3dCatalogoPublico/'+id]:{nombre:values.nombre,descripcion:values.descripcion,categoria:values.categoria,imagen:image,precio:values.precio,wallapop:values.wallapop,imagenes,colores:values.colores,estado:values.estado,plazo:values.plazo,personalizable:values.personalizable},['dev3dCatalogoMayorista/'+id]:{precio:values.mayorista,minimo:values.minimo}});
+          uploadedGallery.clear();
           f.reset();uploadedPhoto=null;$('formTitle').textContent='Nuevo producto';productFeedback('Producto guardado. Ya está publicado en el catálogo.'+(photoSummary?' '+photoSummary:''),'success');
           $('catalogListMessage').textContent=$('productMessage').textContent;$('catalogListMessage').dataset.kind='success';showProductEditor(false);
         }catch(error){productFeedback(window.CATALOGO_PRODUCTS.errorMessage(error),'error');}
@@ -441,6 +457,7 @@
     authentication.onAuthStateChanged(auth, async user => {
       const version = ++generation;
       resetSubscriptions(); currentUser = user; currentShopProfile = null; wholesale = {}; publicProducts = {}; shops = {};
+      uploadedGallery.clear();commerce?.resetSession(user?.uid||'public');
       renderCategoryNavigation();
       admin = window.CATALOGO_NAVIGATION.roleFor(user,null,window.CATALOGO_CONFIG.ADMIN_EMAILS) === 'admin';
       setSessionUI(admin ? 'admin' : user ? 'member' : 'public');
@@ -472,7 +489,7 @@
           if (catalogPage) {
             render();
             $('mode').textContent = role === 'shop' ? 'Precios mayoristas por unidad y total mínimo por color. El mínimo se aplica a cada color por separado; no se suman unidades de colores distintos.' : 'Tu cuenta no tiene acceso mayorista. Contacta con DEV3D Studio para solicitarlo.';
-            if (role === 'shop') tradeStop = database.onValue(path('dev3dCatalogoMayorista'), snap => { if (version === generation) { wholesale = snap.val() || {}; render(); } }, () => { if (version === generation) { wholesale = {}; render(); status('No se pudieron consultar tus precios mayoristas.'); } });
+            if (role === 'shop') tradeStop = database.onValue(path('dev3dCatalogoMayorista'), snap => { if (version === generation && currentShopProfile?.rol==='tienda' && currentShopProfile.activo===true) { wholesale = snap.val() || {}; render(); } }, () => { if (version === generation) { wholesale = {}; render(); status('No se pudieron consultar tus precios mayoristas.'); } });
           }
         });
       }

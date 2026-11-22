@@ -1,0 +1,18 @@
+const assert=require('node:assert/strict'),orders=require('../catalogo-orders.js');
+const products={a:{nombre:'Nombres',precio:10,colores:['Blanco','Rojo'],plazo:'3–5 días'},b:{nombre:'Figura',precio:5,estado:'agotado'}};
+const state={products,wholesale:{a:{precio:2.35,minimo:5}},shop:true,profile:{nombre:'Tienda prueba'}};
+const line=(color,quantity,customization='')=>({id:'a',color,quantity,customization});
+assert.equal(orders.quote([line('Blanco',3,'Ana'),line('blanco',2,'Luis')],state).valid,true);
+assert.equal(orders.quote([line('Blanco',3),line('Rojo',2)],state).valid,false);
+assert.equal(orders.quote([line('Rojo',5)],state).totalCents,1175);
+assert.equal(orders.quote([line('Rojo',1)],{...state,shop:false}).totalCents,1000);
+for(const quantity of [0,-1,1.5,NaN,10001])assert.equal(orders.quote([line('Rojo',quantity)],state).valid,false);
+assert.equal(orders.quote([{id:'b',color:'Rojo',quantity:5}],state).valid,false);
+assert.equal(orders.quote([line('Azul',5)],state).valid,false);
+assert.equal(orders.quote([line('Rojo',5)],{...state,wholesale:{}}).valid,false);
+assert.equal(orders.quote([line('Rojo',5)],{...state,checking:true}).items.length,0);
+assert.equal(orders.quote([line('Rojo',1)],state,{enforceMinimum:false}).valid,true);
+const customer={name:'María & Cía',email:'tienda@example.test',phone:'+34 678123456',notes:'Entrega por la tarde'};
+const url=new URL(orders.whatsapp([line('Rojo',5,'Ana')],state,customer));assert.equal(url.pathname,'/34678746953');for(const text of ['María & Cía','Tienda prueba','Personalización: Ana','Rojo','11,75','3–5 días','Entrega por la tarde'])assert.ok(url.searchParams.get('text').includes(text));
+assert.throws(()=>orders.whatsapp([line('Rojo',1)],state,customer),/mínimo/);assert.throws(()=>orders.whatsapp([line('Rojo',5)],state,{...customer,email:'bad'}),/correo/);
+console.log('PASS: minimum per product/color across personalized variants, retail/wholesale cents, stock, colors, quantities, rates, account loading and encoded WhatsApp summary.');
