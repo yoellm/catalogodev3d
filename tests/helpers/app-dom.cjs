@@ -1,6 +1,6 @@
 const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');const {parseHTML}=require('linkedom');
 const root=path.resolve(__dirname,'../..');
-async function appDOM(page,media,search='',commerce=false){
+async function appDOM(page,media,search='',commerce=false,storage){
  const {window}=parseHTML(fs.readFileSync(path.join(root,page),'utf8')),document=window.document;
  Object.defineProperty(window.HTMLSelectElement.prototype,'value',{configurable:true,get(){const options=[...this.querySelectorAll('option')];const selected=options.find(o=>o.hasAttribute('selected'))||options[0];return selected?.getAttribute('value')??selected?.textContent??'';},set(value){for(const o of this.querySelectorAll('option')){if((o.getAttribute('value')??o.textContent)===String(value))o.setAttribute('selected','');else o.removeAttribute('selected');}}});
  window.HTMLElement.prototype.focus=function(){};window.HTMLElement.prototype.scrollIntoView=function(){};
@@ -17,6 +17,8 @@ async function appDOM(page,media,search='',commerce=false){
  window.CATALOGO_CONFIG={firebaseConfig:{databaseURL:'https://example.test'},ADMIN_EMAILS:['admin@example.test']};window.CATALOGO_NAVIGATION=require('../../catalogo-navigation.js');window.CATALOGO_DRAFT=require('../../catalogo-draft.js');window.CATALOGO_ACCOUNT=require('../../catalogo-account.js');window.CATALOGO_PRODUCTS=require('../../catalogo-products.js');
  window.CATALOGO_HOME=require('../../catalogo-home.js');window.CATALOGO_BOOT={loadFirebase:async()=>[{initializeApp:()=>({})},database,authentication,{getStorage:()=>({}),ref:(_,name)=>name,uploadBytes:async(...args)=>{if(state.upload)return state.upload(...args);throw Error('Unexpected image upload');},getDownloadURL:async(...args)=>state.download?state.download(...args):'https://example.test/photo.webp'}]};
  if(media)window.matchMedia=()=>media;
+ window.CATALOGO_ORDER_DRAFT=require('../../catalogo-order-draft.js');
+ if(storage)window.localStorage=storage;
  if(commerce){window.CATALOGO_ORDERS=require('../../catalogo-orders.js');window.CATALOGO_COMMERCE=require('../../catalogo-commerce.js');}
  const navigator={onLine:true};
  await vm.runInNewContext(fs.readFileSync(path.join(root,'catalogo-app.js'),'utf8'),{window,document,navigator,location:{origin:'https://example.test',hash:'',search,replace(){},assign(url){state.navigation=url;}},URL,Intl,Option:function(text,value){const option=document.createElement('option');option.textContent=text;option.value=value;return option;},console,setTimeout,clearTimeout,confirm:()=>state.confirm});

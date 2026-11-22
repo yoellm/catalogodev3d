@@ -1,6 +1,7 @@
 (function(scope){
   'use strict';
   function invalid(field,message){throw Object.assign(new Error(message),{code:'product/invalid-field',field});}
+  function reference(product,id){return String(product.referencia||'').trim()||'D3D-'+id;}
   function imageUrl(value){try{const url=new URL(String(value||'').trim());return url.href.length<=2000&&['https:','http:'].includes(url.protocol)&&!url.username&&!url.password?url.href:'';}catch{return '';}}
   function gallery(product){return [...new Set([product.imagen,...Object.values(product.imagenes||{})].map(imageUrl).filter(Boolean))].slice(0,6);}
   function colors(value){return [...new Set((Array.isArray(value)?value:String(value||'').split(',')).map(x=>String(x).trim()).filter(Boolean))];}
@@ -23,7 +24,8 @@
     const colores=colors(values.colores);if(colores.length>30||colores.some(c=>c.length>60))invalid('colores','Indica hasta 30 colores de un máximo de 60 caracteres, separados por comas.');
     const estado=values.estado||'disponible';if(!['disponible','bajo_pedido','agotado'].includes(estado))invalid('estado','Selecciona un estado válido.');
     const plazo=String(values.plazo||'').trim();if(plazo.length>150)invalid('plazo','El plazo no puede superar 150 caracteres.');
-    return {nombre,descripcion,categoria,...prices,minimo,wallapop:wallapopUrl(wallapop),colores,estado,plazo,personalizable:values.personalizable!==false&&values.personalizable!=='false'};
+    const referencia=String(values.referencia||'').trim();if(referencia&&!/^[a-zA-Z0-9_-]{1,40}$/.test(referencia))invalid('referencia','La referencia admite hasta 40 letras, números, guiones o guiones bajos, sin espacios.');
+    return {nombre,descripcion,categoria,...prices,minimo,wallapop:wallapopUrl(wallapop),colores,estado,plazo,personalizable:values.personalizable!==false&&values.personalizable!=='false',referencia};
   }
   function errorMessage(error){
     const code=String(error?.code||'').toLowerCase().replaceAll('_','-');
@@ -37,6 +39,6 @@
     const detail=typeof error?.message==='string' ? error.message : '';
     return 'No se ha podido guardar el producto. '+(detail ? detail+' ' : '')+(code ? 'Código: '+code+'. ' : '')+'Tus datos se mantienen en el formulario para que puedas reintentarlo.';
   }
-  scope.CATALOGO_PRODUCTS=Object.freeze({validate,errorMessage,wallapopUrl,imageUrl,gallery,colors,availability});
-  if(typeof module!=='undefined')module.exports={validate,errorMessage,wallapopUrl,imageUrl,gallery,colors,availability};
+  scope.CATALOGO_PRODUCTS=Object.freeze({validate,errorMessage,wallapopUrl,imageUrl,gallery,colors,availability,reference});
+  if(typeof module!=='undefined')module.exports={validate,errorMessage,wallapopUrl,imageUrl,gallery,colors,availability,reference};
 })(typeof window==='undefined'?globalThis:window);
