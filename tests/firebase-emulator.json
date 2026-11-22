@@ -1,0 +1,4 @@
+{
+  "database": {"rules": "../catalogo.rules.json"},
+  "emulators": {"database": {"port": 9008}, "ui": {"enabled": false}, "singleProjectMode": true}
+}

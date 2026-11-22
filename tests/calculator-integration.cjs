@@ -11,6 +11,7 @@ const offer=calc(costs,options);
 assert.equal(offer.gross,1.46); assert.equal(offer.suggestedPvp,2.44); assert.equal(offer.quoteQuantity,10);
 assert.equal(calc(costs,{...options,shopMinimum:20}).gross,offer.gross);
 assert.equal(calc(costs,{...options,saleChannel:'direct'}).gross,2);
+assert.equal(calc(costs,{...options,saleChannel:'direct',shopMinimum:'',wholesaleProfit:'',targetPvp:'',shopMargin:''}).valid,true);
 assert.equal(calc(costs,{...options,shopMinimum:1.2}).valid,false);
 const fixed=calc(costs,{...options,fixedPricing:'yes'});
 assert.equal(fixed.gross,calc({...costs,unitCost:1.08},{...options,fixedPricing:'yes'}).gross);

@@ -126,6 +126,110 @@
           ".write": "auth != null && auth.uid == $uid && root.child('dev3dTiendas').child($uid).child('rol').val() == 'tienda' && newData.isString() && newData.val() == auth.token.email"
         }
       }
+    },
+    "dev3dPedidos": {
+      ".read": "auth != null && (auth.token.email == 'yoelmejias@outlook.es' || auth.token.email == 'irelandmorcillo@gmail.com')",
+      "$uid": {
+        ".read": "auth != null && auth.uid == $uid && root.child('dev3dTiendas').child($uid).child('rol').val() == 'tienda'",
+        "$order": {
+          ".write": "auth != null && auth.uid == $uid && root.child('dev3dTiendas').child($uid).child('rol').val() == 'tienda' && root.child('dev3dTiendas').child($uid).child('activo').val() == true && !data.exists() && newData.exists() && newData.child('seguimiento/estado').val() == 'pendiente' && newData.child('seguimiento/nota').val() == '' && newData.child('seguimiento/actualizado').val() == newData.child('creado').val()",
+          ".validate": "newData.hasChildren(['tienda','contacto','grupos','creado','seguimiento']) && (data.exists() || newData.child('tienda').val() == root.child('dev3dTiendas').child($uid).child('nombre').val())",
+          "tienda": {
+            ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 150"
+          },
+          "creado": {
+            ".validate": "newData.isNumber() && (data.exists() ? newData.val() == data.val() : newData.val() == now)"
+          },
+          "contacto": {
+            ".validate": "newData.hasChildren(['nombre','correo','telefono','comentarios'])",
+            "nombre": {
+              ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 150"
+            },
+            "correo": {
+              ".validate": "newData.isString() && newData.val().length >= 3 && newData.val().length <= 254"
+            },
+            "telefono": {
+              ".validate": "newData.isString() && newData.val().length >= 7 && newData.val().length <= 30"
+            },
+            "comentarios": {
+              ".validate": "newData.isString() && newData.val().length >= 0 && newData.val().length <= 1000"
+            },
+            "$other": {
+              ".validate": false
+            }
+          },
+          "grupos": {
+            ".validate": "newData.hasChildren()",
+            "$index": {
+              ".validate": "$index.matches(/^([0-9]|[12][0-9])$/) && newData.hasChildren(['producto','nombre','referencia','color','cantidad','precio','minimo','plazo','lineas']) && (data.exists() || (root.child('dev3dCatalogoPublico').child(newData.child('producto').val()).exists() && root.child('dev3dCatalogoMayorista').child(newData.child('producto').val()).exists() && root.child('dev3dCatalogoPublico').child(newData.child('producto').val()).child('estado').val() != 'agotado' && newData.child('nombre').val() == root.child('dev3dCatalogoPublico').child(newData.child('producto').val()).child('nombre').val() && newData.child('precio').val() == root.child('dev3dCatalogoMayorista').child(newData.child('producto').val()).child('precio').val() && newData.child('minimo').val() == root.child('dev3dCatalogoMayorista').child(newData.child('producto').val()).child('minimo').val() && newData.child('cantidad').val() >= newData.child('minimo').val() && newData.child('cantidad').val() == ((newData.child('lineas/0/cantidad').exists() ? newData.child('lineas/0/cantidad').val() : 0) + (newData.child('lineas/1/cantidad').exists() ? newData.child('lineas/1/cantidad').val() : 0) + (newData.child('lineas/2/cantidad').exists() ? newData.child('lineas/2/cantidad').val() : 0) + (newData.child('lineas/3/cantidad').exists() ? newData.child('lineas/3/cantidad').val() : 0) + (newData.child('lineas/4/cantidad').exists() ? newData.child('lineas/4/cantidad').val() : 0) + (newData.child('lineas/5/cantidad').exists() ? newData.child('lineas/5/cantidad').val() : 0) + (newData.child('lineas/6/cantidad').exists() ? newData.child('lineas/6/cantidad').val() : 0) + (newData.child('lineas/7/cantidad').exists() ? newData.child('lineas/7/cantidad').val() : 0) + (newData.child('lineas/8/cantidad').exists() ? newData.child('lineas/8/cantidad').val() : 0) + (newData.child('lineas/9/cantidad').exists() ? newData.child('lineas/9/cantidad').val() : 0) + (newData.child('lineas/10/cantidad').exists() ? newData.child('lineas/10/cantidad').val() : 0) + (newData.child('lineas/11/cantidad').exists() ? newData.child('lineas/11/cantidad').val() : 0) + (newData.child('lineas/12/cantidad').exists() ? newData.child('lineas/12/cantidad').val() : 0) + (newData.child('lineas/13/cantidad').exists() ? newData.child('lineas/13/cantidad').val() : 0) + (newData.child('lineas/14/cantidad').exists() ? newData.child('lineas/14/cantidad').val() : 0) + (newData.child('lineas/15/cantidad').exists() ? newData.child('lineas/15/cantidad').val() : 0) + (newData.child('lineas/16/cantidad').exists() ? newData.child('lineas/16/cantidad').val() : 0) + (newData.child('lineas/17/cantidad').exists() ? newData.child('lineas/17/cantidad').val() : 0) + (newData.child('lineas/18/cantidad').exists() ? newData.child('lineas/18/cantidad').val() : 0) + (newData.child('lineas/19/cantidad').exists() ? newData.child('lineas/19/cantidad').val() : 0) + (newData.child('lineas/20/cantidad').exists() ? newData.child('lineas/20/cantidad').val() : 0) + (newData.child('lineas/21/cantidad').exists() ? newData.child('lineas/21/cantidad').val() : 0) + (newData.child('lineas/22/cantidad').exists() ? newData.child('lineas/22/cantidad').val() : 0) + (newData.child('lineas/23/cantidad').exists() ? newData.child('lineas/23/cantidad').val() : 0) + (newData.child('lineas/24/cantidad').exists() ? newData.child('lineas/24/cantidad').val() : 0) + (newData.child('lineas/25/cantidad').exists() ? newData.child('lineas/25/cantidad').val() : 0) + (newData.child('lineas/26/cantidad').exists() ? newData.child('lineas/26/cantidad').val() : 0) + (newData.child('lineas/27/cantidad').exists() ? newData.child('lineas/27/cantidad').val() : 0) + (newData.child('lineas/28/cantidad').exists() ? newData.child('lineas/28/cantidad').val() : 0) + (newData.child('lineas/29/cantidad').exists() ? newData.child('lineas/29/cantidad').val() : 0)) && newData.child('referencia').val() == (root.child('dev3dCatalogoPublico').child(newData.child('producto').val()).child('referencia').exists() && root.child('dev3dCatalogoPublico').child(newData.child('producto').val()).child('referencia').val() != '' ? root.child('dev3dCatalogoPublico').child(newData.child('producto').val()).child('referencia').val() : 'D3D-' + newData.child('producto').val()) && newData.child('plazo').val() == (root.child('dev3dCatalogoPublico').child(newData.child('producto').val()).child('plazo').exists() && root.child('dev3dCatalogoPublico').child(newData.child('producto').val()).child('plazo').val() != '' ? root.child('dev3dCatalogoPublico').child(newData.child('producto').val()).child('plazo').val() : 'A confirmar') && (!root.child('dev3dCatalogoPublico').child(newData.child('producto').val()).child('colores').exists() || root.child('dev3dCatalogoPublico').child(newData.child('producto').val()).child('colores/0').val() == newData.child('color').val() || root.child('dev3dCatalogoPublico').child(newData.child('producto').val()).child('colores/1').val() == newData.child('color').val() || root.child('dev3dCatalogoPublico').child(newData.child('producto').val()).child('colores/2').val() == newData.child('color').val() || root.child('dev3dCatalogoPublico').child(newData.child('producto').val()).child('colores/3').val() == newData.child('color').val() || root.child('dev3dCatalogoPublico').child(newData.child('producto').val()).child('colores/4').val() == newData.child('color').val() || root.child('dev3dCatalogoPublico').child(newData.child('producto').val()).child('colores/5').val() == newData.child('color').val() || root.child('dev3dCatalogoPublico').child(newData.child('producto').val()).child('colores/6').val() == newData.child('color').val() || root.child('dev3dCatalogoPublico').child(newData.child('producto').val()).child('colores/7').val() == newData.child('color').val() || root.child('dev3dCatalogoPublico').child(newData.child('producto').val()).child('colores/8').val() == newData.child('color').val() || root.child('dev3dCatalogoPublico').child(newData.child('producto').val()).child('colores/9').val() == newData.child('color').val() || root.child('dev3dCatalogoPublico').child(newData.child('producto').val()).child('colores/10').val() == newData.child('color').val() || root.child('dev3dCatalogoPublico').child(newData.child('producto').val()).child('colores/11').val() == newData.child('color').val() || root.child('dev3dCatalogoPublico').child(newData.child('producto').val()).child('colores/12').val() == newData.child('color').val() || root.child('dev3dCatalogoPublico').child(newData.child('producto').val()).child('colores/13').val() == newData.child('color').val() || root.child('dev3dCatalogoPublico').child(newData.child('producto').val()).child('colores/14').val() == newData.child('color').val() || root.child('dev3dCatalogoPublico').child(newData.child('producto').val()).child('colores/15').val() == newData.child('color').val() || root.child('dev3dCatalogoPublico').child(newData.child('producto').val()).child('colores/16').val() == newData.child('color').val() || root.child('dev3dCatalogoPublico').child(newData.child('producto').val()).child('colores/17').val() == newData.child('color').val() || root.child('dev3dCatalogoPublico').child(newData.child('producto').val()).child('colores/18').val() == newData.child('color').val() || root.child('dev3dCatalogoPublico').child(newData.child('producto').val()).child('colores/19').val() == newData.child('color').val() || root.child('dev3dCatalogoPublico').child(newData.child('producto').val()).child('colores/20').val() == newData.child('color').val() || root.child('dev3dCatalogoPublico').child(newData.child('producto').val()).child('colores/21').val() == newData.child('color').val() || root.child('dev3dCatalogoPublico').child(newData.child('producto').val()).child('colores/22').val() == newData.child('color').val() || root.child('dev3dCatalogoPublico').child(newData.child('producto').val()).child('colores/23').val() == newData.child('color').val() || root.child('dev3dCatalogoPublico').child(newData.child('producto').val()).child('colores/24').val() == newData.child('color').val() || root.child('dev3dCatalogoPublico').child(newData.child('producto').val()).child('colores/25').val() == newData.child('color').val() || root.child('dev3dCatalogoPublico').child(newData.child('producto').val()).child('colores/26').val() == newData.child('color').val() || root.child('dev3dCatalogoPublico').child(newData.child('producto').val()).child('colores/27').val() == newData.child('color').val() || root.child('dev3dCatalogoPublico').child(newData.child('producto').val()).child('colores/28').val() == newData.child('color').val() || root.child('dev3dCatalogoPublico').child(newData.child('producto').val()).child('colores/29').val() == newData.child('color').val())))",
+              "producto": {
+                ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 150"
+              },
+              "nombre": {
+                ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 150"
+              },
+              "referencia": {
+                ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 160"
+              },
+              "color": {
+                ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 60"
+              },
+              "cantidad": {
+                ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 300000 && newData.val() % 1 == 0"
+              },
+              "precio": {
+                ".validate": "newData.isNumber() && newData.val() >= 0"
+              },
+              "minimo": {
+                ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 300000 && newData.val() % 1 == 0"
+              },
+              "plazo": {
+                ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 150"
+              },
+              "lineas": {
+                ".validate": "newData.hasChildren()",
+                "$index": {
+                  ".validate": "$index.matches(/^([0-9]|[12][0-9])$/) && newData.hasChildren(['cantidad','personalizacion','comentarios']) && (data.exists() || newData.child('personalizacion').val() == '' || root.child('dev3dCatalogoPublico').child(newData.parent().parent().child('producto').val()).child('personalizable').val() != false)",
+                  "cantidad": {
+                    ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 10000 && newData.val() % 1 == 0"
+                  },
+                  "personalizacion": {
+                    ".validate": "newData.isString() && newData.val().length >= 0 && newData.val().length <= 300"
+                  },
+                  "comentarios": {
+                    ".validate": "newData.isString() && newData.val().length >= 0 && newData.val().length <= 500"
+                  },
+                  "$other": {
+                    ".validate": false
+                  }
+                }
+              },
+              "$other": {
+                ".validate": false
+              }
+            }
+          },
+          "seguimiento": {
+            ".write": "auth != null && (auth.token.email == 'yoelmejias@outlook.es' || auth.token.email == 'irelandmorcillo@gmail.com') && data.parent().exists() && newData.exists()",
+            ".validate": "newData.hasChildren(['estado','actualizado','nota'])",
+            "estado": {
+              ".validate": "newData.val() == 'pendiente' || newData.val() == 'confirmado' || newData.val() == 'fabricacion' || newData.val() == 'enviado' || newData.val() == 'entregado' || newData.val() == 'cancelado'"
+            },
+            "actualizado": {
+              ".validate": "newData.isNumber() && newData.val() == now"
+            },
+            "nota": {
+              ".validate": "newData.isString() && newData.val().length >= 0 && newData.val().length <= 1000"
+            },
+            "$other": {
+              ".validate": false
+            }
+          },
+          "$other": {
+            ".validate": false
+          }
+        }
+      }
     }
   }
 }

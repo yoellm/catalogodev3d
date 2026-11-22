@@ -6,7 +6,7 @@ function computeCommercialOffer(c, options) {
   const shop = options.saleChannel === 'shop';
   const fixed = options.fixedPricing === 'yes';
   const errors = [];
-  const required = ['wholesaleProfit', 'shopMargin', 'targetPvp', 'shopMinimum'];
+  const required = shop ? ['wholesaleProfit', 'shopMargin', 'targetPvp', 'shopMinimum'] : [];
   if (fixed) required.push('referenceCost', 'costBuffer');
   if (required.some(key => !Number.isFinite(n(key)) || n(key) < 0 || String(options[key]).trim() === '')) errors.push('Completa los campos con valores válidos, iguales o mayores que cero.');
   if (shop && (n('shopMargin') >= 100 || !Number.isInteger(n('shopMinimum')) || n('shopMinimum') < 1)) errors.push('El margen debe ser menor del 100% y el pedido mínimo un entero positivo.');

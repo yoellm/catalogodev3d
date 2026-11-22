@@ -10,6 +10,7 @@
   let publicProducts = {}, wholesale = {}, shops = {}, currentUser = null, currentShopProfile = null, admin = false, generation = 0;
   let subscriptions = [], tradeStop = null, productHashHandled = false, calculatorInstance = null, productSaving = false, uploadedPhoto = null;
   let adminProductPage = 1;
+  let historyView=null,submitOrder=null,historyStop=null;
   const uploadedGallery=new Map();
   let categoryFromLink=catalogPage?new URL('https://www.dev3dstudio.es/catalogo.html'+(location.search||'')).searchParams.get('categoria'):null;
   function renderCategoryNavigation(){
@@ -30,7 +31,8 @@
   function productWatermark(container) { const logo=el('img',undefined,'product-watermark');logo.src='logo.png';logo.alt='';container.replaceChildren(logo); }
   function safeUrl(value) { try { const url = new URL(value); return ['https:','http:'].includes(url.protocol) ? url.href : ''; } catch { return ''; } }
   function orderStorage(){try{return window.localStorage;}catch{return null;}}
-  const commerce=catalogPage&&window.CATALOGO_COMMERCE?window.CATALOGO_COMMERCE.mount({document,getState:()=>({products:publicProducts,wholesale,shop:!admin&&currentShopProfile?.rol==='tienda'&&currentShopProfile.activo===true,checking:!!currentUser&&!admin&&currentShopProfile===null,user:currentUser,profile:currentShopProfile}),orders:window.CATALOGO_ORDERS,products:window.CATALOGO_PRODUCTS,drafts:window.CATALOGO_ORDER_DRAFT,storage:orderStorage(),navigate:url=>location.assign(url)}):null;
+  function orderState(){return {products:publicProducts,wholesale,shop:!admin&&currentShopProfile?.rol==='tienda'&&currentShopProfile.activo===true,checking:!!currentUser&&!admin&&currentShopProfile===null,user:currentUser,profile:currentShopProfile};}
+  const commerce=catalogPage&&window.CATALOGO_COMMERCE?window.CATALOGO_COMMERCE.mount({document,getState:orderState,orders:window.CATALOGO_ORDERS,products:window.CATALOGO_PRODUCTS,drafts:window.CATALOGO_ORDER_DRAFT,storage:orderStorage(),navigate:url=>location.assign(url),registerOrder:(lines,customer)=>{if(!submitOrder)throw Error('El registro de pedidos no está disponible. Recarga la página.');return submitOrder(lines,customer);}}):null;
   if (window.matchMedia) {
     const menu = $('mainMenu'), content = menu.querySelector('.menu-content');
     const desktop = el('div', undefined, 'desktop-account'); menu.after(desktop);
@@ -68,6 +70,7 @@
     if (shopPage) {
       const hasShopAccount=!!currentUser && !admin && profile.rol==='tienda';
       $('accountSettings').hidden=!hasShopAccount;
+      $('orderHistorySection').hidden=!hasShopAccount;
       $('accountCurrentEmail').textContent=hasShopAccount ? currentUser.email || '' : '';
       if(!hasShopAccount){$('emailChangeForm').reset();$('passwordChangeForm').reset();for(const id of ['emailChangeMessage','passwordChangeMessage','accountStateMessage'])$(id).textContent='';}
       $('shopDashboard').hidden = role !== 'shop';
@@ -100,18 +103,20 @@
   }
   function showAdminView(view) {
     if (!admin || !adminPage) return;
-    if (!['home','catalog','shops','calculator'].includes(view)) view = 'home';
+    if (!['home','catalog','shops','calculator','orders'].includes(view)) view = 'home';
     $('adminDashboard').hidden = view !== 'home';
     $('catalogView').hidden = view !== 'catalog';
     $('productWorkspace').hidden = view !== 'catalog';
     $('shopsView').hidden = view !== 'shops';
     $('calculatorPanel').hidden = view !== 'calculator';
+    $('orderHistorySection').hidden=view!=='orders';
     $('closeCalculator').hidden = view === 'home';
     const content = {
       home:['Panel de administración','Elige qué quieres hacer. Todas tus herramientas, en un solo lugar.'],
       catalog:['Gestión del catálogo','Añade productos, fotografías y precios para particulares y tiendas.'],
       shops:['Gestión de tiendas','Crea cuentas y gestiona el acceso a tus precios mayoristas.'],
-      calculator:['Calculadora de precios','Calcula tus costes y convierte el resultado en un nuevo producto.']
+      calculator:['Calculadora de precios','Calcula tus costes y convierte el resultado en un nuevo producto.'],
+      orders:['Pedidos de tiendas','Revisa las solicitudes y actualiza su estado. Las solicitudes pendientes todavía necesitan tu confirmación.']
     }[view];
     $('viewTitle').textContent = content[0]; $('viewDescription').textContent = content[1];
     document.body.dataset.adminView = view;
@@ -148,13 +153,18 @@
     const app = appSDK.initializeApp(window.CATALOGO_CONFIG.firebaseConfig, 'dev3d-catalog');
     const db = database.getDatabase(app, databaseURL), auth = authentication.getAuth(app), storage = storageSDK.getStorage(app);
     const path = name => name ? database.ref(db, name) : database.ref(db);
+    if(catalogPage&&window.CATALOGO_HISTORY)submitOrder=window.CATALOGO_HISTORY.sender({sdk:database,db,getState:orderState});
+    if((adminPage||shopPage)&&window.CATALOGO_HISTORY_UI)historyView=window.CATALOGO_HISTORY_UI.mount({document,admin:adminPage,api:window.CATALOGO_HISTORY,saveStatus:async(uid,id,state,note)=>{
+      if(!admin||!currentUser)throw Error('Acceso exclusivo del administrador.');
+      await database.set(path('dev3dPedidos/'+uid+'/'+id+'/seguimiento'),{estado:state,nota:note,actualizado:database.serverTimestamp()});
+    }});
     const watch = (name, callback) => { subscriptions.push(database.onValue(path(name), snap => callback(snap.val() || {}), error => {
       if (homePage) { $('featuredStatus').textContent = 'No hemos podido cargar las piezas. Puedes consultar el catálogo completo.'; }
       const denied = String(error?.code || error?.message || '').toLowerCase().replaceAll('_','-').includes('permission-denied');
       if (adminPage && admin && denied) $('rulesNotice').hidden = false;
       status(adminPage ? 'No se pudieron cargar los datos. Comprueba la conexión y las reglas de acceso del catálogo.' : 'El catálogo no está disponible en este momento. Inténtalo de nuevo más tarde.');
     })); };
-    function resetSubscriptions() { subscriptions.forEach(stop => stop()); subscriptions = []; if (tradeStop) { tradeStop(); tradeStop = null; } }
+    function resetSubscriptions() { subscriptions.forEach(stop => stop()); subscriptions = []; if (tradeStop) { tradeStop(); tradeStop = null; } if(historyStop){historyStop();historyStop=null;} }
     let resetSending = false;
     function showLogin() { $('passwordResetForm').hidden = true; $('loginForm').hidden = false; $('loginError').textContent = ''; }
     function openLogin() { $('mainMenu').open = false; showLogin(); $('loginDialog').showModal(); }
@@ -374,6 +384,7 @@
       function showCalculator(open) { showAdminView(open ? 'calculator' : 'catalog'); }
       $('goCatalog').onclick = () => showAdminView('catalog');
       $('goShops').onclick = () => showAdminView('shops');
+      $('goOrders').onclick = () => showAdminView('orders');
       $('openCalculator').onclick = () => showCalculator(true);
       $('closeCalculator').onclick = () => showAdminView('home');
       function productFeedback(message,kind='info'){$('productMessage').textContent=message;$('productMessage').dataset.kind=kind;}
@@ -461,6 +472,7 @@
       const version = ++generation;
       if(currentUser?.uid&&currentUser.uid!==user?.uid)window.CATALOGO_ORDER_DRAFT?.create(orderStorage()).remove(currentUser.uid);
       resetSubscriptions(); currentUser = user; currentShopProfile = null; wholesale = {}; publicProducts = {}; shops = {};
+      historyView?.reset();
       uploadedGallery.clear();commerce?.resetSession(user?.uid||'public');
       renderCategoryNavigation();
       admin = window.CATALOGO_NAVIGATION.roleFor(user,null,window.CATALOGO_CONFIG.ADMIN_EMAILS) === 'admin';
@@ -470,8 +482,8 @@
         resetShopForm(); $('rulesNotice').hidden = true;
         adminProductPage=1;uploadedPhoto=null;showProductEditor(false);
         $('adminPanel').hidden = !admin; $('adminProducts').replaceChildren(); $('shops').replaceChildren(); $('productForm').reset();
-        if (admin) { status(''); showAdminView(location.hash === '#calculadora' ? 'calculator' : 'home'); }
-        else { if(calculatorInstance){calculatorInstance.destroy();calculatorInstance=null;} $('calculatorMount').replaceChildren(); document.body.dataset.adminView = ''; $('calculatorPanel').hidden = true; $('productWorkspace').hidden = true; $('shopsView').hidden = true; $('closeCalculator').hidden = true; status(''); }
+        if (admin) { status(''); showAdminView(location.hash === '#calculadora' ? 'calculator' : location.hash === '#pedidos' ? 'orders' : 'home'); }
+        else { if(calculatorInstance){calculatorInstance.destroy();calculatorInstance=null;} $('calculatorMount').replaceChildren(); document.body.dataset.adminView = ''; $('calculatorPanel').hidden = true; $('productWorkspace').hidden = true; $('shopsView').hidden = true; $('orderHistorySection').hidden=true; $('closeCalculator').hidden = true; status(''); }
       } else if (catalogPage) {
         $('grid').replaceChildren(); $('mode').textContent = 'Precios de venta al público.';
       }
@@ -479,6 +491,7 @@
         watch('dev3dCatalogoPublico', value => { if (version === generation) { publicProducts = value; renderCategoryNavigation(); render(); } });
       }
       if (admin && (adminPage || catalogPage)) {
+        if(adminPage&&historyView){const stop=database.onValue(path('dev3dPedidos'),snapshot=>{if(version===generation&&admin)historyView.setData(snapshot.val());},()=>{if(version===generation&&admin)historyView.fail();});subscriptions.push(stop);}
         watch('dev3dCatalogoMayorista', value => { if (version === generation) { wholesale = value; render(); } });
         if (adminPage) watch('dev3dTiendas', value => { if (version === generation) { shops = value; renderAdmin(); } });
       } else if (user && !admin) {
@@ -489,6 +502,7 @@
           const role = window.CATALOGO_NAVIGATION.roleFor(user,profile,window.CATALOGO_CONFIG.ADMIN_EMAILS);
           currentShopProfile=profile;
           setSessionUI(role,profile);
+          if(shopPage&&historyView){if(historyStop){historyStop();historyStop=null;}historyView.reset();if(profile?.rol==='tienda')historyStop=database.onValue(path('dev3dPedidos/'+user.uid),snapshot=>{if(version===generation&&currentUser?.uid===user.uid&&currentShopProfile?.rol==='tienda')historyView.setData(snapshot.val(),user.uid);},()=>{if(version===generation&&currentUser?.uid===user.uid&&currentShopProfile?.rol==='tienda')historyView.fail();});}
           if(shopPage)syncShopEmail(profile);
           if (catalogPage) {
             render();

@@ -19,7 +19,10 @@ async function appDOM(page,media,search='',commerce=false,storage){
  if(media)window.matchMedia=()=>media;
  window.CATALOGO_ORDER_DRAFT=require('../../catalogo-order-draft.js');
  if(storage)window.localStorage=storage;
- if(commerce){window.CATALOGO_ORDERS=require('../../catalogo-orders.js');window.CATALOGO_COMMERCE=require('../../catalogo-commerce.js');}
+ window.CATALOGO_ORDERS=require('../../catalogo-orders.js');window.CATALOGO_HISTORY=require('../../catalogo-history.js');
+ database.serverTimestamp=()=>({'.sv':'timestamp'});database.get=async(name)=>({val:()=>state.writes.findLast(w=>w.name===name)?.value||null});
+ if(commerce)window.CATALOGO_COMMERCE=require('../../catalogo-commerce.js');
+ if(page==='admin.html'||page==='tienda.html')window.CATALOGO_HISTORY_UI=require('../../catalogo-history-ui.js');
  const navigator={onLine:true};
  await vm.runInNewContext(fs.readFileSync(path.join(root,'catalogo-app.js'),'utf8'),{window,document,navigator,location:{origin:'https://example.test',hash:'',search,replace(){},assign(url){state.navigation=url;}},URL,Intl,Option:function(text,value){const option=document.createElement('option');option.textContent=text;option.value=value;return option;},console,setTimeout,clearTimeout,confirm:()=>state.confirm});
  return {window,document,state,navigator,node:id=>document.getElementById(id),async session(user){state.user=user;await state.authCallback(user);},emit(name,value){const sub=state.subscriptions.findLast(s=>s.name===name&&s.active);if(!sub)throw Error('No subscription: '+name);sub.callback({val:()=>value});},async submit(id){const form=document.getElementById(id);await form.onsubmit({preventDefault(){},currentTarget:form});}};

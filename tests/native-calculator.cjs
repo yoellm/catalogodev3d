@@ -24,9 +24,16 @@ for(const [id,value] of Object.entries({quantity:1,printDays:0,printHours:0,prin
 field('weight',.1);field('price',10);field('factor',1);
 const aux=root.querySelector('.aux-item input');aux.value='0';aux.dispatchEvent(new window.Event('input',{bubbles:true}));
 assert.equal(external.value,'777');assert.equal(euroValue('realCost'),1);assert.equal(euroValue('recommendedPrice'),2);
+assert.equal(get('shopResaleResult').hidden,true);assert.match(get('offerTitle').textContent,/cobras al cliente/);
+assert.equal(root.querySelector('.cost-details').hasAttribute('open'),false);
+assert.equal(root.querySelector('.offer-calculation-details').hasAttribute('open'),false);
+assert.equal(root.querySelector('.result-top').hidden,true);assert.equal(root.querySelector('.summary-pills').hidden,true);
 set('pieceName','Pieza nativa');set('saleChannel','shop');assert.equal(euroValue('offerPriceAmount'),1.46);assert(get('offerPriceTotal').textContent.includes('10 unidades'));
+assert.equal(get('shopResaleResult').hidden,false);assert.equal(euroValue('shopResalePrice'),2.44);assert.match(get('offerTitle').textContent,/cobras a la tienda/);assert.match(get('offerPriceTotal').textContent,/14,60/);assert.match(get('offerPriceLabel').textContent,/IVA incluido/);
+assert.match(get('offerResults').textContent,/Mínimo por color/);assert.equal(get('profitPercent').closest('label').hidden,true);assert.equal(get('wholesaleProfit').closest('label').hidden,false);
+set('targetPvp',2);assert.match(get('offerStatus').textContent,/no deja a la tienda/);assert.equal(euroValue('offerPriceAmount'),1.46);assert.match(get('shopResaleMargin').textContent,/40,16/);assert.match(get('shopResaleTarget').textContent,/27%/);set('targetPvp',0);
 click('inventoryButton');assert.equal(draft.nombre,'Pieza nativa');assert.equal(draft.precio,2.44);assert.equal(draft.mayorista,1.46);assert.equal(draft.minimo,10);
-set('saleChannel','direct');click('inventoryButton');assert.equal(draft.precio,2);assert.equal(draft.mayorista,1.46);
+set('saleChannel','direct');click('inventoryButton');assert.equal(draft.precio,2);assert.equal(draft.mayorista,1.46);assert.equal(get('shopResaleResult').hidden,true);assert.equal(get('profitPercent').closest('label').hidden,false);assert.equal(get('wholesaleProfit').closest('label').hidden,true);
 click('printButton');assert.equal(printCalls,1);
 assert(values.has('dev3d-catalogo-costes-v1'));instance.destroy();mount.replaceChildren();
 root=content();instance=window.DEV3D_CALCULATOR.mount(root,{onDraft:data=>{draft=data;return true;}});assert.equal(get('pieceName').value,'Pieza nativa');assert.equal(euroValue('recommendedPrice'),2);

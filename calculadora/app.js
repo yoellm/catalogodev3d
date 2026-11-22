@@ -20,13 +20,13 @@ function commercialOfferLines() {
     `OFERTA · ${o.fixed ? options.rateName || 'Personalización' : $('#pieceName').value.trim() || 'Pieza 3D'}`,
     o.shop ? 'Tarifa para tiendas' : 'Venta directa',
     ...(o.fixed ? [`Precio cerrado para las personalizaciones de este producto.`] : []),
-    ...(o.shop ? [`Pedido mínimo: ${options.shopMinimum} unidades.`] : []),
+    ...(o.shop ? [`Pedido mínimo: ${options.shopMinimum} unidades por color.`] : []),
     `Cantidad presupuestada: ${o.quoteQuantity} unidades.`,
     `Precio por unidad sin IVA: ${euro.format(o.net)}`,
     `IVA: ${decimal.format(state.lastCosts.vatRate * 100)}%`,
     `Precio por unidad con IVA: ${euro.format(o.gross)}`,
     `Total con IVA: ${euro.format(o.total)}`,
-    ...(o.shop ? [`PVP sugerido con IVA: ${euro.format(o.suggestedPvp)}`] : [])
+    ...(o.shop ? [`PVP recomendado para la reventa de la tienda, con IVA: ${euro.format(o.suggestedPvp)}`] : [])
   ];
 }
 
@@ -35,40 +35,35 @@ function renderCommercialOffer() {
   const o = computeCommercialOffer(state.lastCosts, options);
   state.offer = o;
   $('#fixedFields').classList.toggle('hidden', !o.fixed);
-  $('#offerTitle').textContent = `${o.shop ? 'Tu precio para tiendas' : 'Tu precio de venta directa'}${o.fixed ? ' · precio cerrado' : ''}`;
+  $('#offerTitle').textContent = `${o.shop ? 'Lo que tú cobras a la tienda' : 'Lo que tú cobras al cliente'}${o.fixed ? ' · precio fijo' : ''}`;
   $('#offerPriceHighlight').classList.toggle('hidden', !o.valid);
-  $('#offerPriceLabel').textContent = o.shop ? 'Este es el precio que debes cobrar a la tienda' : 'Este es el precio que debes cobrar al cliente';
+  $('#offerPriceLabel').textContent = o.shop ? 'Tu tarifa mayorista · IVA incluido' : 'Tu precio de venta · IVA incluido';
   $('#offerPriceAmount').textContent = o.valid ? euro.format(o.gross) : '';
-  $('#offerPriceTotal').textContent = o.valid ? `Total a cobrar por ${o.quoteQuantity} unidades: ${euro.format(o.total)} · IVA incluido` : '';
-  const rows = [
-    ['Tarifa', o.fixed ? `${options.rateName || 'Personalización'} · precio cerrado` : 'Pieza actual'],
-    ['Tu precio / ud. sin IVA', euro.format(o.net)],
-    ['Tu precio / ud. con IVA', euro.format(o.gross)],
-    [`Total con IVA (${o.quoteQuantity} uds.)`, euro.format(o.total)],
-    ['Coste cubierto / ud. sin IVA', euro.format(o.cost)],
-    [o.fixed ? 'Beneficio reservado tras el colchón / ud.' : 'Tu beneficio / ud. sin IVA', euro.format(o.profit)]
-  ];
-  if (o.fixed) rows.push(
-    ['Colchón disponible sobre el coste actual / ud.', euro.format(o.bufferRemaining)],
-    ['Beneficio con el coste actual / ud. sin IVA', euro.format(o.actualProfit)]
-  );
-  if (o.shop) rows.push(
-    ['Pedido mínimo', `${options.shopMinimum} unidades`],
-    ['PVP necesario con IVA', euro.format(o.suggestedPvp)],
-    ['PVP evaluado con IVA', euro.format(o.pvp)],
-    ['Margen real de la tienda', `${decimal.format(o.actualMargin * 100)}%`],
-    ['Beneficio tienda / ud. sin IVA', euro.format((o.pvp - o.gross) / (1 + state.lastCosts.vatRate))]
-  );
+  $('#offerPriceTotal').textContent = o.valid ? `Total por ${o.quoteQuantity} unidades: ${euro.format(o.total)} · IVA incluido` : '';
+  const rows = [['Coste de fabricación / ud. sin IVA', euro.format(state.lastCosts.unitCost)],['Tu beneficio / ud. sin IVA', euro.format(o.actualProfit)]];
+  if(o.shop)rows.push(['Mínimo por color',options.shopMinimum+' unidades']);
   $('#offerResults').innerHTML = o.valid ? rows.map(([label, amount]) => `<div class="cost-line"><span>${escapeHtml(label)}</span><strong>${escapeHtml(amount)}</strong></div>`).join('') : '';
+  const technical=[['Tu tarifa / ud. sin IVA',euro.format(o.net)],[`IVA por unidad (${decimal.format(state.lastCosts.vatRate*100)}%)`,euro.format(o.gross-o.net)]];
+  if(o.fixed)technical.push(['Coste de referencia con colchón / ud.',euro.format(o.cost)],['Colchón restante sobre el coste actual / ud.',euro.format(o.bufferRemaining)],['Beneficio reservado / ud. sin IVA',euro.format(o.profit)]);
+  $('#offerTechnical').innerHTML=o.valid?technical.map(([label,amount])=>`<div class="cost-line"><span>${escapeHtml(label)}</span><strong>${escapeHtml(amount)}</strong></div>`).join(''):'';
+  $('#shopResaleResult').hidden=!o.shop||!o.valid;
+  $('#shopResalePrice').textContent=o.valid?euro.format(o.suggestedPvp):'';
+  const resaleMargin=o.suggestedPvp>0?(o.suggestedPvp-o.gross)/o.suggestedPvp:0;
+  $('#shopResaleMargin').textContent=`Margen de la tienda con este PVP: ${decimal.format(resaleMargin*100)}%`;
+  const differentTarget=Number(options.targetPvp)>0&&Math.abs(o.pvp-o.suggestedPvp)>.005;
+  $('#shopResaleTarget').hidden=!differentTarget;$('#shopResaleTarget').textContent=differentTarget?'Con tu PVP objetivo de '+euro.format(o.pvp)+' con IVA, el margen de la tienda sería '+decimal.format(o.actualMargin*100)+'%.':'';
+  for(const id of ['wholesaleProfit','shopMargin','targetPvp','shopMinimum'])document.getElementById(id).closest('label').hidden=!o.shop;
+  document.getElementById('profitPercent').closest('label').hidden=o.shop;
   let status = o.errors.join(' ');
   if (o.valid) status = !o.compatible
-    ? `El PVP objetivo no permite ambos beneficios. Para dejar el margen solicitado, la tienda podría pagar como máximo ${euro.format(o.maxWholesaleNet)} sin IVA por unidad. Mantén tu tarifa y revisa el PVP, el coste o los porcentajes.`
-    : 'Tarifa calculada con los costes indicados. Los márgenes se comparan sin IVA y se aplica el mismo IVA a ambas ventas.';
+    ? `El PVP objetivo de ${euro.format(o.pvp)} no deja a la tienda el margen solicitado. Con tu tarifa, el PVP recomendado es ${euro.format(o.suggestedPvp)}. Tu precio de cobro no se ha reducido.`
+    : '';
   if (o.valid && o.overBuffer) status += ` Esta variante supera el colchón en ${euro.format(-o.bufferRemaining)} por unidad. El precio se mantiene; tu beneficio con el coste actual es ${euro.format(o.actualProfit)} sin IVA por unidad.${o.actualProfit < 0 ? ' Atención: esta variante se vendería con pérdidas.' : ''}`;
-  if (o.valid && o.minimumApplied) status += ` Oferta para el pedido mínimo de ${o.quoteQuantity} unidades, usando el coste por unidad del cálculo actual. No se ha aplicado un descuento por cantidad ni se han cambiado los datos de fabricación.`;
+  if (o.valid && o.minimumApplied) status += ` El total usa el mínimo de ${o.quoteQuantity} unidades por color. El precio unitario no tiene descuento por cantidad.`;
   $('#offerStatus').textContent = status;
   $('#offerStatus').classList.toggle('warning', !o.valid || !o.compatible || o.overBuffer);
   $('#copyOffer').disabled = !o.valid;
+  $('#copyOffer').textContent=o.shop?'Copiar oferta para la tienda':'Copiar oferta para el cliente';
   $('#inventoryButton').disabled = !o.valid;
 }
 const $ = (selector) => document.querySelector(selector);
@@ -139,7 +134,7 @@ function openProductDraftInInventory() {
   if (!state.offer?.valid) return showToast("Revisa los avisos de la tarifa comercial");
   const options = commercialOptions();
   const shopOffer = computeCommercialOffer(state.lastCosts, {...options, saleChannel: 'shop'});
-  if (!shopOffer.valid) return showToast("Revisa el beneficio mayorista y el pedido mínimo antes de preparar el producto");
+  if (!shopOffer.valid) return showToast('Selecciona «Venta a tienda» y revisa su beneficio y mínimo antes de preparar el producto');
   if (!active) return;
   const data = {
     type: 'dev3d:product-draft',
@@ -461,13 +456,7 @@ function renderResults() {
         <span>${part.label} / ud.</span>
         <strong>${euro.format(part.value)}</strong>
       </div>`),
-    `<div class="cost-line total"><span>Coste base / ud.</span><strong>${euro.format(c.unitCost)}</strong></div>`,
-    `<div class="cost-line"><span>Beneficio (${decimal.format(c.profitRate * 100)}%)</span><strong>${euro.format(c.unitProfit)}</strong></div>`,
-    `<div class="cost-line"><span>Precio sin IVA / ud.</span><strong>${euro.format(c.unitBeforeVat)}</strong></div>`,
-    `<div class="cost-line"><span>IVA (${decimal.format(c.vatRate * 100)}%)</span><strong>${euro.format(c.unitVat)}</strong></div>`,
-    `<div class="cost-line"><span>Precio calculado / ud.</span><strong>${euro.format(c.unitFinal)}</strong></div>`,
-    `<div class="cost-line final"><span>Tu precio recomendado / ud.</span><strong>${euro.format(c.unitRecommended)}</strong></div>`,
-    `<div class="cost-line partner-final"><span>Precio de reventa (+${decimal.format(c.partnerMarkupRate * 100)}%) / ud.</span><strong>${euro.format(c.partnerUnitRecommended)}</strong></div>`
+    `<div class="cost-line total"><span>Coste de fabricación / ud. sin IVA</span><strong>${euro.format(c.unitCost)}</strong></div>`
   ].join("");
 
   const biggest = parts.reduce((max, part) => part.value > max.value ? part : max, parts[0]);
@@ -1205,16 +1194,9 @@ function copySummary() {
     `Materiales auxiliares: ${euro.format(c.auxiliaries)}`,
     `Mantenimiento (${decimal.format(c.maintenanceRate * 100)}%): ${euro.format(c.maintenance)}`,
     "",
-    `Coste base: ${euro.format(c.costBase)}`,
-    `Beneficio (${decimal.format(c.profitRate * 100)}%): ${euro.format(c.profit)}`,
-    `Total sin IVA: ${euro.format(c.beforeVat)}`,
-    `IVA (${decimal.format(c.vatRate * 100)}%): ${euro.format(c.vat)}`,
-    `PRECIO CALCULADO: ${euro.format(c.finalPrice)}`,
-    `Precio calculado por unidad: ${euro.format(c.unitFinal)}`,
-    `PRECIO RECOMENDADO POR UNIDAD: ${euro.format(c.unitRecommended)}`,
-    `TOTAL RECOMENDADO (${c.quantity} uds.): ${euro.format(c.recommendedFinal)}`,
-    `PRECIO DE REVENTA (+${decimal.format(c.partnerMarkupRate * 100)}%) POR UNIDAD: ${euro.format(c.partnerUnitRecommended)}`,
-    `TOTAL DE REVENTA (${c.quantity} uds.): ${euro.format(c.partnerRecommendedFinal)}`
+    `Coste de fabricación del lote sin IVA: ${euro.format(c.costBase)}`,
+    `Coste de fabricación por unidad sin IVA: ${euro.format(c.unitCost)}`,
+    `Tu beneficio por unidad sin IVA: ${euro.format(state.offer.actualProfit)}`
   ];
   lines.push("", "TARIFA COMERCIAL", ...commercialOfferLines(), $("#offerStatus").textContent);
   navigator.clipboard.writeText(lines.join("\n"))

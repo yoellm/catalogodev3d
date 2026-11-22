@@ -1,0 +1,25 @@
+const assert=require('node:assert/strict'),fs=require('node:fs');const history=require('../catalogo-history.js');
+// Local emulator only. Never seed production data or use production credentials.
+const base='http://127.0.0.1:9008',namespace='demo-dev3d-default-rtdb';
+const token=(uid,email)=>[Buffer.from(JSON.stringify({alg:'none',typ:'JWT'})).toString('base64url'),Buffer.from(JSON.stringify({sub:uid,user_id:uid,email,iat:Math.floor(Date.now()/1000),exp:Math.floor(Date.now()/1000)+3600,aud:'demo-dev3d',iss:'https://securetoken.google.com/demo-dev3d',firebase:{sign_in_provider:'password'}})).toString('base64url'),''].join('.');
+async function request(method,path,data,auth){return fetch(base+'/'+path+'.json?ns='+namespace+(auth&&auth!=='owner'?'&auth='+encodeURIComponent(auth):''),{method,headers:{...(auth==='owner'?{Authorization:'Bearer owner'}:{}),'Content-Type':'application/json'},...(data!==undefined?{body:JSON.stringify(data)}:{})});}
+async function allowed(p){const res=await p;assert(res.ok,await res.text());}async function denied(p){const res=await p;assert.equal(res.status,401,await res.text());}
+(async()=>{
+ await allowed(request('PUT','.settings/rules',JSON.parse(fs.readFileSync(require.resolve('../catalogo.rules.json'),'utf8')),'owner'));
+ const state={shop:true,profile:{nombre:'Tienda A'},products:{p:{nombre:'Pieza',precio:10,colores:['Rojo'],personalizable:true}},wholesale:{p:{precio:2.35,minimo:5}}};
+ await allowed(request('PUT','',{dev3dTiendas:{a:{rol:'tienda',activo:true,nombre:'Tienda A'},b:{rol:'tienda',activo:true,nombre:'Tienda B'},inactive:{rol:'tienda',activo:false,nombre:'Inactiva'}},dev3dCatalogoPublico:state.products,dev3dCatalogoMayorista:state.wholesale},'owner'));
+ const snapshot=history.request([{id:'p',color:'Rojo',quantity:3,customization:'Ana'},{id:'p',color:'Rojo',quantity:2,customization:'Luis'}],state,{name:'Contacto',email:'a@example.test',phone:'678123456'});
+ const record={...snapshot,creado:{'.sv':'timestamp'},seguimiento:{estado:'pendiente',actualizado:{'.sv':'timestamp'},nota:''}},a=token('a','a@example.test'),b=token('b','b@example.test'),admin=token('admin','yoelmejias@outlook.es');
+ await allowed(request('PUT','dev3dPedidos/a/o1',record,a));await allowed(request('GET','dev3dPedidos/a',undefined,a));await allowed(request('GET','dev3dPedidos',undefined,admin));
+ await denied(request('GET','dev3dPedidos',undefined,a));await denied(request('GET','dev3dPedidos/a',undefined,b));await denied(request('GET','dev3dPedidos/a',undefined));await denied(request('PUT','dev3dPedidos/b/o1',record,a));await denied(request('DELETE','dev3dPedidos/a/o1',undefined,a));
+ await denied(request('PUT','dev3dPedidos/a/o1',record,a));await denied(request('PUT','dev3dPedidos/a/o1/grupos/0/precio',.01,a));await denied(request('PUT','dev3dPedidos/a/o1/grupos/0/precio',.01,admin));await denied(request('PUT','dev3dPedidos/a/o1/seguimiento',{estado:'entregado',actualizado:{'.sv':'timestamp'},nota:''},a));
+ const alter=change=>{const r=structuredClone(record);change(r);return r;};
+ for(const [name,change] of Object.entries({price:r=>r.grupos[0].precio=.01,minimum:r=>r.grupos[0].minimo=1,quantity:r=>r.grupos[0].cantidad=100,below:r=>{r.grupos[0].cantidad=4;r.grupos[0].lineas[1].cantidad=1;},color:r=>r.grupos[0].color='Azul',extra:r=>r.password='secret',confirmed:r=>r.seguimiento.estado='confirmado',date:r=>r.creado=1,other:r=>r.grupos[30]=r.grupos[0]}))await denied(request('PUT','dev3dPedidos/a/'+name,alter(change),a));
+ await denied(request('PUT','dev3dPedidos/inactive/o1',{...record,tienda:'Inactiva'},token('inactive','i@example.test')));
+ const large=structuredClone(record);large.grupos=Array.from({length:30},()=>structuredClone(record.grupos[0]));await allowed(request('PUT','dev3dPedidos/a/large',large,a));
+ await allowed(request('PUT','dev3dCatalogoMayorista/p',{precio:3,minimo:20},'owner'));await allowed(request('PUT','dev3dCatalogoPublico/p/estado','agotado','owner'));
+ await allowed(request('PUT','dev3dPedidos/a/o1/seguimiento',{estado:'fabricacion',actualizado:{'.sv':'timestamp'},nota:'El jueves'},admin));await denied(request('DELETE','dev3dPedidos/a/o1/seguimiento',undefined,admin));await denied(request('PUT','dev3dPedidos/a/o1/seguimiento',{estado:'inventado',actualizado:{'.sv':'timestamp'},nota:''},admin));
+ await allowed(request('PUT','dev3dTiendas/a/activo',false,'owner'));await allowed(request('GET','dev3dPedidos/a',undefined,a));await denied(request('PUT','dev3dPedidos/a/o2',record,a));
+ await allowed(request('DELETE','dev3dTiendas/a',undefined,'owner'));await denied(request('GET','dev3dPedidos/a',undefined,a));
+ console.log('PASS: emulator security: private owner reads, active stores only, immutable prices/minimums/snapshots, server timestamps, per-color sums, admin-only tracking, changed catalog and revoked/deleted accounts.');
+})().catch(e=>{console.error(e);process.exitCode=1;});
