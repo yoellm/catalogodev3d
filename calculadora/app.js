@@ -7,6 +7,7 @@
     // Todas las consultas quedan dentro de esta pantalla.
     const document={querySelector:selector=>root.querySelector(selector),getElementById:id=>root.querySelector('#'+id)};
     const computeCommercialOffer=scope.DEV3D_PRICING.computeCommercialOffer;
+    const roundSalePrice=scope.DEV3D_PRICING.roundSalePrice;
     const profitProfiles=scope.DEV3D_PROFIT_PROFILES;
     const materialTax=scope.DEV3D_MATERIAL_TAX;
 function commercialOptions() {
@@ -137,12 +138,6 @@ function value(id) {
 function safeNumber(number, fallback = 0) {
   const parsed = Number.parseFloat(number);
   return Number.isFinite(parsed) ? parsed : fallback;
-}
-
-function roundSalePrice(value, step = 0.5) {
-  const safeValue = Math.max(0, safeNumber(value));
-  const safeStep = Math.max(0.01, safeNumber(step, 0.5));
-  return Math.ceil((safeValue - 1e-9) / safeStep) * safeStep;
 }
 
 function openProductDraftInInventory(mode) {

@@ -1,6 +1,13 @@
 (function(scope){
 'use strict';
 /* Commercial prices use net costs and margins on net selling prices. */
+function roundSalePrice(value) {
+  const tenths = Math.max(0, Number(value)) * 10;
+  if (tenths === 0) return 0;
+  // Preserve exact tenths despite floating-point arithmetic (e.g. 0.1 + 0.2).
+  const tolerance = Number.EPSILON * 8 * Math.abs(tenths);
+  return Math.ceil(tenths - tolerance) / 10;
+}
 function computeCommercialOffer(c, options) {
   const n = (key) => Number(options[key]);
   const shop = options.saleChannel === 'shop';
@@ -16,12 +23,10 @@ function computeCommercialOffer(c, options) {
   const cost = fixed ? n('referenceCost') * (1 + n('costBuffer') / 100) : c.unitCost;
   const overBuffer = fixed && c.unitCost > cost + 0.000001;
   const profitRate = shop ? n('wholesaleProfit') / 100 : c.profitRate;
-  const round = amount => Math.ceil((amount - 1e-9) * 100) / 100;
-  // The established direct price retains its 0.50 EUR rounding.
-  const gross = !shop && !fixed ? c.unitRecommended : round(cost * (1 + profitRate) * (1 + c.vatRate));
+  const gross = roundSalePrice(cost * (1 + profitRate) * (1 + c.vatRate));
   const net = gross / (1 + c.vatRate);
   const margin = n('shopMargin') / 100;
-  const suggestedPvp = shop && margin < 1 ? round(gross / (1 - margin)) : gross;
+  const suggestedPvp = shop && margin < 1 ? roundSalePrice(gross / (1 - margin)) : gross;
   const pvp = shop && n('targetPvp') > 0 ? n('targetPvp') : suggestedPvp;
   const pvpNet = pvp / (1 + c.vatRate);
   const actualMargin = pvpNet > 0 ? (pvpNet - net) / pvpNet : 0;
@@ -30,8 +35,8 @@ function computeCommercialOffer(c, options) {
   if (cost <= 0) errors.push('Añade costes antes de emitir una oferta.');
   const finite = [cost, gross, net, pvp, suggestedPvp].every(Number.isFinite);
   return {shop, fixed, cost, gross, net, pvp, suggestedPvp, actualMargin, maxWholesaleNet, compatible,
-    profit: net - cost, actualProfit: net - c.unitCost, bufferRemaining: cost - c.unitCost, overBuffer, quoteQuantity, minimumApplied, total: gross * quoteQuantity, errors, valid: finite && errors.length === 0};
+    profit: net - cost, actualProfit: net - c.unitCost, bufferRemaining: cost - c.unitCost, overBuffer, quoteQuantity, minimumApplied, total: Math.round(gross * 100) * quoteQuantity / 100, errors, valid: finite && errors.length === 0};
 }
-scope.DEV3D_PRICING=Object.freeze({computeCommercialOffer});
-if(typeof module!=='undefined')module.exports={computeCommercialOffer};
+scope.DEV3D_PRICING=Object.freeze({computeCommercialOffer,roundSalePrice});
+if(typeof module!=='undefined')module.exports={computeCommercialOffer,roundSalePrice};
 })(typeof window==='undefined'?globalThis:window);

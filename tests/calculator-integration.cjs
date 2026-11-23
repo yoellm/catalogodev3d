@@ -5,12 +5,12 @@ const vm = require('node:vm');
 const root = path.resolve(__dirname,'..');
 const {validateDraft} = require('../catalogo-draft.js');
 const {computeCommercialOffer:calc} = require('../calculadora/commercial.js');
-const costs={unitCost:1,quantity:1,profitRate:.3,vatRate:.21,unitRecommended:2};
+const costs={unitCost:1,quantity:1,profitRate:.3,vatRate:.21,unitRecommended:1.6};
 const options={saleChannel:'shop',fixedPricing:'no',wholesaleProfit:20,shopMargin:40,targetPvp:0,shopMinimum:10,referenceCost:1,costBuffer:10};
 const offer=calc(costs,options);
-assert.equal(offer.gross,1.46); assert.equal(offer.suggestedPvp,2.44); assert.equal(offer.quoteQuantity,10);
+assert.equal(offer.gross,1.5); assert.equal(offer.suggestedPvp,2.5); assert.equal(offer.quoteQuantity,10);
 assert.equal(calc(costs,{...options,shopMinimum:20}).gross,offer.gross);
-assert.equal(calc(costs,{...options,saleChannel:'direct'}).gross,2);
+assert.equal(calc(costs,{...options,saleChannel:'direct'}).gross,1.6);
 assert.equal(calc(costs,{...options,saleChannel:'direct',shopMinimum:'',wholesaleProfit:'',targetPvp:'',shopMargin:''}).valid,true);
 assert.equal(calc(costs,{...options,shopMinimum:1.2}).valid,false);
 const fixed=calc(costs,{...options,fixedPricing:'yes'});
@@ -20,26 +20,26 @@ const calculatorSource=fs.readFileSync(path.join(root,'calculadora/app.js'),'utf
 const sender=calculatorSource.match(/function openProductDraftInInventory\([^)]*\) \{[\s\S]*?\n\}/)[0];
 const calculator={active:true,linkedProduct:null,captureCalculation:()=>undefined,onDraft:data=>{received={data};return true;},state:{offer,lastCosts:costs},commercialOptions:()=>options,computeCommercialOffer:calc,$:()=>({value:'Llavero'}),showToast:()=>{}};
 vm.runInNewContext(sender+'; openProductDraftInInventory();',calculator);
-assert.equal(received.data.precio,2); assert.equal(received.data.mayorista,1.46); assert.equal(received.data.minimo,10);
+assert.equal(received.data.precio,1.6); assert.equal(received.data.mayorista,1.5); assert.equal(received.data.minimo,10);
 assert(validateDraft(received.data));
 for(const bad of [{...received.data,precio:NaN},{...received.data,minimo:0},{...received.data,minimo:2.2},{...received.data,nombre:''},{...received.data,precio:'2'},{...received.data,type:'other'}]) assert.equal(validateDraft(bad),null);
 assert.equal(validateDraft({...received.data,unitCost:10}).unitCost,undefined);
 calculator.state.offer=calc(costs,{...options,saleChannel:'direct'});
 vm.runInNewContext(sender+'; openProductDraftInInventory();',calculator);
-assert.equal(received.data.precio,2); assert.equal(received.data.mayorista,1.46);
+assert.equal(received.data.precio,1.6); assert.equal(received.data.mayorista,1.5);
 // Importing the same unit costs must never depend on mode, batch size, shop
 // minimum or the separate target PVP for the shop's resale.
 for(const quantity of [1,5,10])for(const minimum of [1,5,20])for(const channel of ['shop','direct']){
  const config={...options,saleChannel:channel,shopMinimum:minimum,targetPvp:123};
  calculator.commercialOptions=()=>config;calculator.state.lastCosts={...costs,quantity};calculator.state.offer=calc(calculator.state.lastCosts,config);
  vm.runInNewContext(sender+'; openProductDraftInInventory();',calculator);
- assert.equal(received.data.precio,2);assert.equal(received.data.mayorista,1.46);assert.equal(received.data.minimo,minimum);
+ assert.equal(received.data.precio,1.6);assert.equal(received.data.mayorista,1.5);assert.equal(received.data.minimo,minimum);
 }
 for(const channel of ['shop','direct']){
  const config={...options,saleChannel:channel,fixedPricing:'yes',shopMinimum:5};
  calculator.commercialOptions=()=>config;calculator.state.lastCosts={...costs,quantity:10};calculator.state.offer=calc(calculator.state.lastCosts,config);
  vm.runInNewContext(sender+'; openProductDraftInInventory();',calculator);
- assert.equal(received.data.precio,1.74);assert.equal(received.data.mayorista,1.60);assert.equal(received.data.minimo,5);
+ assert.equal(received.data.precio,1.8);assert.equal(received.data.mayorista,1.60);assert.equal(received.data.minimo,5);
 }
 calculator.commercialOptions=()=>options;calculator.state.lastCosts=costs;calculator.state.offer=offer;
 vm.runInNewContext(sender+'; openProductDraftInInventory();',calculator);
@@ -64,7 +64,7 @@ await authCallback(null); node('openCalculator').onclick(); assert.equal(mountCa
 await authCallback({uid:'admin',email:'admin@example.test'}); node('openCalculator').onclick(); assert.equal(mountCalls,1);node('openCalculator').onclick();assert.equal(mountCalls,1);
 assert.equal(draftReceiver({...received.data,minimo:0}),false);assert.equal(form.elements.nombre.value,'');
 assert.equal(draftReceiver(received.data),true);
-assert.equal(form.elements.nombre.value,'Llavero'); assert.equal(form.elements.precio.value,2); assert.equal(form.elements.mayorista.value,1.46); assert.equal(form.elements.minimo.value,10); assert.equal(form.elements.id.value,''); assert.equal(node('calculatorPanel').hidden,true); assert.equal(writes,0);
+assert.equal(form.elements.nombre.value,'Llavero'); assert.equal(form.elements.precio.value,1.6); assert.equal(form.elements.mayorista.value,1.5); assert.equal(form.elements.minimo.value,10); assert.equal(form.elements.id.value,''); assert.equal(node('calculatorPanel').hidden,true); assert.equal(writes,0);
 await authCallback(null); assert.equal(destroyCalls,1); assert.equal(node('adminPanel').hidden,true);
 assert.equal(draftReceiver(received.data),false);assert.equal(writes,0);
 let helperCalls=0, profileWrite;
