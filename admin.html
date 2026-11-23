@@ -245,17 +245,15 @@
 
           <section class="card input-card">
             <div class="card-heading">
-              <div><span class="section-kicker">CIERRE DEL PRESUPUESTO</span><h3>Mantenimiento, beneficio e IVA</h3></div>
+              <div><span class="section-kicker">COSTE DE MANTENIMIENTO</span><h3>Desgaste y mantenimiento</h3></div>
               <span class="card-icon coral"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15.5A3.5 3.5 0 1 0 12 8a3.5 3.5 0 0 0 0 7.5Z"/><path d="M19 12a7 7 0 0 1-.2 1.7l2 1.5-2 3.5-2.5-1a7 7 0 0 1-3 1.7L13 22H9l-.4-2.6a7 7 0 0 1-3-1.7l-2.4 1-2-3.5 2-1.5A7 7 0 0 1 3 12c0-.6 0-1.2.2-1.7l-2-1.5 2-3.5 2.5 1a7 7 0 0 1 3-1.7L9 2h4l.4 2.6a7 7 0 0 1 3 1.7l2.4-1 2 3.5-2 1.5c.1.5.2 1.1.2 1.7Z"/></svg></span>
             </div>
-            <div class="form-grid budget-fields">
+            <div class="budget-fields">
               <label class="field">
                 <span>Mantenimiento / desgaste</span>
                 <div class="input-suffix"><input id="maintenancePercent" type="number" value="10" min="0" max="1000" step="0.5"><b>%</b></div>
                 <small>Aplicado sobre material, electricidad, operarios y auxiliares</small>
               </label>
-              <label class="field"><span>Beneficio sobre coste</span><div class="input-suffix"><input id="profitPercent" type="number" value="30" min="0" max="1000" step="1"><b>%</b></div><small>Habitualmente entre 15% y 30%</small></label>
-              <label class="field"><span>IVA</span><div class="input-suffix"><input id="vatPercent" type="number" value="21" min="0" max="100" step="1"><b>%</b></div></label>
               <label class="field partner-field" hidden><span>Recargo de reventa tradicional</span><div class="input-suffix"><input id="partnerMarkupPercent" type="number" value="20" min="0" max="1000" step="1"><b>%</b></div><small>Se suma automáticamente sobre el precio recomendado</small></label>
             </div>
           </section>
@@ -266,7 +264,9 @@
             <div class="form-grid">
               <label class="field"><span>Canal de venta</span><select id="saleChannel"><option value="direct">Venta directa</option><option value="shop">Venta a tienda</option></select></label>
               <label class="field"><span>Tipo de tarifa</span><select id="fixedPricing"><option value="no">Coste de la pieza actual</option><option value="yes">Precio cerrado con colchón</option></select></label>
-              <label class="field"><span>Tu beneficio mayorista sobre coste (%)</span><input id="wholesaleProfit" type="number" value="20" min="0" step="1"></label>
+              <label class="field"><span>Tu beneficio en venta directa (%)</span><div class="input-suffix"><input id="profitPercent" type="number" value="30" min="0" max="1000" step="1"><b>%</b></div><small>Se aplica sobre tu coste de fabricación.</small></label>
+              <label class="field"><span>Tu beneficio al vender a tiendas (%)</span><input id="wholesaleProfit" type="number" value="20" min="0" step="1"><small>Se aplica sobre tu coste de fabricación.</small></label>
+              <label class="field"><span>IVA aplicable</span><div class="input-suffix"><input id="vatPercent" type="number" value="21" min="0" max="100" step="1"><b>%</b></div></label>
               <label class="field"><span>Margen de la tienda sobre su venta (%)</span><input id="shopMargin" type="number" value="40" min="0" max="99" step="1"><small>Un margen del 40% deja a la tienda el 40% del PVP sin IVA.</small></label>
               <label class="field"><span>PVP objetivo de reventa por unidad, con IVA (€)</span><input id="targetPvp" type="number" value="0" min="0" step="0.01"><small>Solo para la reventa de la tienda; no cambia tu precio público del catálogo. Pon 0 para calcular el PVP necesario.</small></label>
               <label class="field"><span>Pedido mínimo para tiendas por color (uds.)</span><input id="shopMinimum" type="number" value="1" min="1" step="1"><small>El mínimo se aplica a unidades del mismo color. Si calculas menos unidades, la oferta mostrará el total para este mínimo, manteniendo el precio por unidad.</small></label>
