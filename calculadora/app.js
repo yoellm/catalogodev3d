@@ -20,7 +20,7 @@ function commercialOfferLines() {
     `OFERTA · ${o.fixed ? options.rateName || 'Personalización' : $('#pieceName').value.trim() || 'Pieza 3D'}`,
     o.shop ? 'Tarifa para tiendas' : 'Venta directa',
     ...(o.fixed ? [`Precio cerrado para las personalizaciones de este producto.`] : []),
-    ...(o.shop ? [`Pedido mínimo: ${options.shopMinimum} unidades por color.`] : []),
+    ...(o.shop ? [`Pedido mínimo: ${options.shopMinimum} unidades.`] : []),
     `Cantidad presupuestada: ${o.quoteQuantity} unidades.`,
     `Precio por unidad sin IVA: ${euro.format(o.net)}`,
     `IVA: ${decimal.format(state.lastCosts.vatRate * 100)}%`,
@@ -41,7 +41,7 @@ function renderCommercialOffer() {
   $('#offerPriceAmount').textContent = o.valid ? euro.format(o.gross) : '';
   $('#offerPriceTotal').textContent = o.valid ? `Total por ${o.quoteQuantity} unidades: ${euro.format(o.total)} · IVA incluido` : '';
   const rows = [['Coste de fabricación / ud. sin IVA', euro.format(state.lastCosts.unitCost)],['Tu beneficio / ud. sin IVA', euro.format(o.actualProfit)]];
-  if(o.shop)rows.push(['Mínimo por color',options.shopMinimum+' unidades']);
+  if(o.shop)rows.push(['Mínimo para tiendas',options.shopMinimum+' unidades']);
   $('#offerResults').innerHTML = o.valid ? rows.map(([label, amount]) => `<div class="cost-line"><span>${escapeHtml(label)}</span><strong>${escapeHtml(amount)}</strong></div>`).join('') : '';
   const technical=[['Tu tarifa / ud. sin IVA',euro.format(o.net)],[`IVA por unidad (${decimal.format(state.lastCosts.vatRate*100)}%)`,euro.format(o.gross-o.net)]];
   if(o.fixed)technical.push(['Coste de referencia con colchón / ud.',euro.format(o.cost)],['Colchón restante sobre el coste actual / ud.',euro.format(o.bufferRemaining)],['Beneficio reservado / ud. sin IVA',euro.format(o.profit)]);
@@ -59,7 +59,7 @@ function renderCommercialOffer() {
     ? `El PVP objetivo de ${euro.format(o.pvp)} no deja a la tienda el margen solicitado. Con tu tarifa, el PVP recomendado es ${euro.format(o.suggestedPvp)}. Tu precio de cobro no se ha reducido.`
     : '';
   if (o.valid && o.overBuffer) status += ` Esta variante supera el colchón en ${euro.format(-o.bufferRemaining)} por unidad. El precio se mantiene; tu beneficio con el coste actual es ${euro.format(o.actualProfit)} sin IVA por unidad.${o.actualProfit < 0 ? ' Atención: esta variante se vendería con pérdidas.' : ''}`;
-  if (o.valid && o.minimumApplied) status += ` El total usa el mínimo de ${o.quoteQuantity} unidades por color. El precio unitario no tiene descuento por cantidad.`;
+  if (o.valid && o.minimumApplied) status += ` El total usa el mínimo de ${o.quoteQuantity} unidades. El precio unitario no tiene descuento por cantidad.`;
   $('#offerStatus').textContent = status;
   $('#offerStatus').classList.toggle('warning', !o.valid || !o.compatible || o.overBuffer);
   $('#copyOffer').disabled = !o.valid;

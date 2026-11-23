@@ -17,7 +17,7 @@
       if(!state.shop||state.checking){$('detailOrderForm').hidden=true;$('detailAdd').disabled=true;$('detailPrice').textContent='';return;}
       $('detailOrderForm').hidden=false;
       const trade=state.wholesale[activeId],price=state.shop?trade?.precio:p.precio,min=state.shop?trade?.minimo:1;
-      $('detailMinimum').textContent=state.shop?'Mínimo: '+(min||'pendiente')+' unidades por color. Puedes combinar personalizaciones del mismo color.':'Elige el color y la cantidad que necesitas.';
+      $('detailMinimum').textContent=state.shop?'Mínimo: '+(min||'pendiente')+' unidades '+products.minimumLabel(trade)+'. '+(products.minimumType(trade)==='producto'?'Puedes sumar colores y personalizaciones de este producto.':'Puedes combinar personalizaciones del mismo color.'):'Elige el color y la cantidad que necesitas.';
       const quantity=Number($('detailQuantity').value);
       $('detailPrice').textContent=state.checking?'Comprobando tus condiciones…':Number.isFinite(price)?money(Math.round(price*100))+' / unidad'+(Number.isSafeInteger(quantity)&&quantity>0?' · Total: '+money(Math.round(price*100)*quantity):''):'Precio pendiente de configurar.';
       $('detailAdd').disabled=submitting||state.checking||p.estado==='agotado'||!Number.isFinite(price)||(state.shop&&!Number.isSafeInteger(min));

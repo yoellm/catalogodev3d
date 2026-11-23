@@ -95,7 +95,7 @@
     const p=publicProducts[id];if(!p)return false;const f=$('productForm');f.reset();uploadedPhoto=null;uploadedGallery.clear();$('productMessage').textContent='';
     for(const key of ['nombre','descripcion','categoria','imagen','precio','wallapop','plazo','referencia'])f.elements[key].value=p[key]??'';
     f.elements.estado.value=p.estado||'disponible';f.elements.colores.value=Object.values(p.colores||{}).join(', ');f.elements.personalizable.value=String(p.personalizable!==false);f.elements.galeria.value=window.CATALOGO_PRODUCTS.gallery(p).filter(url=>url!==safeUrl(p.imagen)).join('\n');
-    f.elements.referencia.value=window.CATALOGO_PRODUCTS.reference(p,id);f.elements.id.value=id;f.elements.mayorista.value=wholesale[id]?.precio??'';f.elements.minimo.value=wholesale[id]?.minimo??1;
+    f.elements.referencia.value=window.CATALOGO_PRODUCTS.reference(p,id);f.elements.id.value=id;f.elements.mayorista.value=wholesale[id]?.precio??'';f.elements.minimo.value=wholesale[id]?.minimo??1;f.elements.minimoTipo.value=window.CATALOGO_PRODUCTS.minimumType(wholesale[id]);
     $('formTitle').textContent='Editar producto';refreshPricingWarnings();showProductEditor(true);return true;
   }
   function renderPriceTargets(){
@@ -108,7 +108,7 @@
   function previewPriceTarget(){
     const id=$('pricingTarget').value,p=publicProducts[id];$('pricingAccept').disabled=!p||!pricingDraft;$('pricingPreview').replaceChildren();
     if(!p||!pricingDraft){$('pricingPreview').textContent='No hay productos que coincidan con la búsqueda.';return;}
-    for(const [label,oldValue,newValue] of [['Público / unidad',money(p.precio),money(pricingDraft.precio)],['Mayorista / unidad',wholesale[id]?money(wholesale[id].precio):'Sin configurar',money(pricingDraft.mayorista)],['Mínimo para tiendas por color',wholesale[id]?.minimo||'Sin configurar',pricingDraft.minimo]])$('pricingPreview').append(el('p',label+': '+oldValue+' → '+newValue));
+    for(const [label,oldValue,newValue] of [['Público / unidad',money(p.precio),money(pricingDraft.precio)],['Mayorista / unidad',wholesale[id]?money(wholesale[id].precio):'Sin configurar',money(pricingDraft.mayorista)],['Mínimo para tiendas '+window.CATALOGO_PRODUCTS.minimumLabel(wholesale[id]),wholesale[id]?.minimo||'Sin configurar',pricingDraft.minimo]])$('pricingPreview').append(el('p',label+': '+oldValue+' → '+newValue));
   }
   function openPriceUpdater(data){
     if(!admin||!adminPage)return false;pricingDraft=window.CATALOGO_DRAFT.validateDraft(data);if(!pricingDraft)return false;
@@ -127,7 +127,7 @@
         $('formTitle').textContent = draft.productId?'Actualizar precios del producto':'Nuevo producto desde la calculadora';
         showAdminView('catalog');
         refreshPricingWarnings();showProductEditor(true);
-        $('productMessage').textContent='Los dos precios son por 1 unidad, con IVA incluido. El pedido mínimo se aplica solo a tiendas y por color.';
+        $('productMessage').textContent='Los dos precios son por 1 unidad, con IVA incluido. El pedido mínimo se aplica solo a tiendas, según la condición elegida.';
         $('productMessage').dataset.kind='info';
         status('Precios por unidad preparados. Añade la foto y la categoría, revisa los datos y pulsa Guardar producto para publicarlo.');
         form.scrollIntoView({behavior:'smooth'});
@@ -309,7 +309,7 @@
         if(!shopView&&!checkingShop)pricing.append(el('p',money(p.precio),'price'),el('small','Precio de venta al público'));
         if(validTrade(wholesale[id])){
           const trade=wholesale[id],total=Math.round(trade.precio*100)*trade.minimo/100,box=el('div',undefined,'wholesale');
-          box.append(el('strong',money(trade.precio)+' / unidad','wholesale-unit'),el('p','Pedido mínimo: '+trade.minimo+(trade.minimo===1?' unidad':' unidades')+' por color','wholesale-minimum'),el('span','Total del mínimo por color','wholesale-total-label'),el('strong',money(total),'wholesale-total'));
+          box.append(el('strong',money(trade.precio)+' / unidad','wholesale-unit'),el('p','Pedido mínimo: '+trade.minimo+(trade.minimo===1?' unidad':' unidades')+' '+window.CATALOGO_PRODUCTS.minimumLabel(trade),'wholesale-minimum'),el('span',window.CATALOGO_PRODUCTS.minimumType(trade)==='color'?'Total del mínimo por color':'Total del mínimo por producto','wholesale-total-label'),el('strong',money(total),'wholesale-total'));
           pricing.append(box);
         }else if(shopView||checkingShop)pricing.append(el('p',checkingShop?'Comprobando tus condiciones…':'Precio mayorista pendiente de configurar. Consúltanos para este producto.','wholesale-pending'));
         if(!shopView&&!checkingShop&&p.estado!=='agotado'){const url=window.CATALOGO_PRODUCTS.wallapopUrl(p.wallapop);if(url){const link=el('a','Comprar en Wallapop ↗','wallapop-link');link.href=url;link.target='_blank';link.rel='noopener noreferrer';link.setAttribute('aria-label','Comprar '+p.nombre+' en Wallapop (abre otra pestaña)');pricing.append(link);}}
@@ -351,12 +351,12 @@
       $('adminProductPage').textContent='Página '+adminProductPage+' de '+pages;
       $('adminProductPrev').disabled=adminProductPage===1;$('adminProductNext').disabled=adminProductPage===pages;
       const table=el('table',undefined,'product-management-table'),head=el('thead'),heading=el('tr'),body=el('tbody');
-      for(const title of ['Producto','Precio público','Mayorista / ud.','Mínimo por color','Acciones']){const th=el('th',title);th.scope='col';heading.append(th);}head.append(heading);table.append(head,body);
+      for(const title of ['Producto','Precio público','Mayorista / ud.','Mínimo mayorista','Acciones']){const th=el('th',title);th.scope='col';heading.append(th);}head.append(heading);table.append(head,body);
       entries.slice(start,start+pageSize).forEach(([id,p])=>{
         const row=el('tr'),product=el('td'),info=el('div',undefined,'product-row-info'),name=el('div');
         const url=safeUrl(p.imagen);if(url){const photo=el('img');photo.src=url;photo.alt='';photo.loading='lazy';info.append(photo);}
         name.append(el('strong',p.nombre),el('small','Ref. '+window.CATALOGO_PRODUCTS.reference(p,id),'product-reference'),el('small',p.categoria||'Sin categoría'));info.append(name);product.append(info);row.append(product);
-        for(const [label,value] of [['Precio público',money(p.precio)],['Mayorista / ud.',wholesale[id]?money(wholesale[id].precio):'Sin configurar'],['Mínimo por color',wholesale[id]?.minimo?wholesale[id].minimo+' uds.':'—']]){const cell=el('td',value);cell.dataset.label=label;row.append(cell);}
+        for(const [label,value] of [['Precio público',money(p.precio)],['Mayorista / ud.',wholesale[id]?money(wholesale[id].precio):'Sin configurar'],['Mínimo mayorista',wholesale[id]?.minimo?wholesale[id].minimo+' uds. '+window.CATALOGO_PRODUCTS.minimumLabel(wholesale[id]):'—']]){const cell=el('td',value);cell.dataset.label=label;row.append(cell);}
         const actions=el('td'),buttons=el('div',undefined,'product-row-actions'),edit=el('button','Editar','secondary'),duplicate=el('button','Duplicar','secondary'),remove=el('button','Eliminar','danger-button');
         edit.setAttribute('aria-label','Editar '+p.nombre);remove.setAttribute('aria-label','Eliminar '+p.nombre);
         edit.onclick=()=>{if(!productSaving)fillProductEditor(id);};
@@ -445,7 +445,7 @@
         refreshPricingWarnings();
         if(fields.id.value&&!publicProducts[fields.id.value]){productFeedback('Este producto ya no está en el catálogo. Cierra la ficha y selecciona otro producto.','error');return;}
         let values;
-        try{values=window.CATALOGO_PRODUCTS.validate(Object.fromEntries(['nombre','descripcion','categoria','precio','mayorista','minimo','wallapop','estado','plazo','colores','personalizable','referencia'].map(key=>[key,fields[key].value])));}
+        try{values=window.CATALOGO_PRODUCTS.validate(Object.fromEntries(['nombre','descripcion','categoria','precio','mayorista','minimo','minimoTipo','wallapop','estado','plazo','colores','personalizable','referencia'].map(key=>[key,fields[key].value])));}
         catch(error){productFeedback(error.message,'error');fields[error.field]?.focus();return;}
         if(typeof navigator!=='undefined'&&navigator.onLine===false){productFeedback('No hay conexión. Conéctate a internet antes de guardar el producto.','error');return;}
         productSaving=true;const button=$('saveProduct');button.disabled=true;button.textContent='Guardando…';$('resetProduct').disabled=true;f.setAttribute('aria-busy','true');productFeedback('Guardando el producto…');
@@ -480,7 +480,7 @@
           }
           if(image&&!window.CATALOGO_PRODUCTS.imageUrl(image))throw Object.assign(new Error('La URL de la imagen debe comenzar por https:// o http://.'),{code:'product/image-url'});
           const imagenes=[...new Set([image,...galleryUrls].filter(Boolean))];image=image||imagenes[0]||'';
-          await database.update(path(''),{['dev3dCatalogoPublico/'+id]:{nombre:values.nombre,descripcion:values.descripcion,categoria:values.categoria,imagen:image,precio:values.precio,wallapop:values.wallapop,imagenes,colores:values.colores,estado:values.estado,plazo:values.plazo,personalizable:values.personalizable,referencia},['dev3dCatalogoMayorista/'+id]:{precio:values.mayorista,minimo:values.minimo}});
+          await database.update(path(''),{['dev3dCatalogoPublico/'+id]:{nombre:values.nombre,descripcion:values.descripcion,categoria:values.categoria,imagen:image,precio:values.precio,wallapop:values.wallapop,imagenes,colores:values.colores,estado:values.estado,plazo:values.plazo,personalizable:values.personalizable,referencia},['dev3dCatalogoMayorista/'+id]:{precio:values.mayorista,minimo:values.minimo,minimoTipo:values.minimoTipo}});
           uploadedGallery.clear();
           f.reset();uploadedPhoto=null;$('formTitle').textContent='Nuevo producto';productFeedback('Producto guardado. Ya está publicado en el catálogo.'+(photoSummary?' '+photoSummary:''),'success');
           $('catalogListMessage').textContent=$('productMessage').textContent;$('catalogListMessage').dataset.kind='success';showProductEditor(false);
@@ -551,7 +551,7 @@
           if(shopPage)syncShopEmail(profile);
           if (catalogPage) {
             render();
-            $('mode').textContent = role === 'shop' ? 'Precios mayoristas por unidad y total mínimo por color. El mínimo se aplica a cada color por separado; no se suman unidades de colores distintos.' : 'Tu cuenta no tiene acceso mayorista. Contacta con DEV3D Studio para solicitarlo.';
+            $('mode').textContent = role === 'shop' ? 'Precios mayoristas por unidad y total mínimo. Cada producto indica si el mínimo se exige por color o permite combinar colores.' : 'Tu cuenta no tiene acceso mayorista. Contacta con DEV3D Studio para solicitarlo.';
             if (role === 'shop') tradeStop = database.onValue(path('dev3dCatalogoMayorista'), snap => { if (version === generation && currentShopProfile?.rol==='tienda' && currentShopProfile.activo===true) { wholesale = snap.val() || {}; render(); } }, () => { if (version === generation) { wholesale = {}; render(); status('No se pudieron consultar tus precios mayoristas.'); } });
           }
         });

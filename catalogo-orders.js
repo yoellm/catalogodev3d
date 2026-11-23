@@ -18,10 +18,10 @@
       const price=shop?trade?.precio:product.precio,min=shop?trade?.minimo:1;
       if(!Number.isFinite(price)||price<0||!Number.isSafeInteger(min)||min<1){errors.push(product.nombre+': la tarifa todavía no está disponible.');continue;}
       const unit=Math.round(price*100),total=unit*qty;if(!Number.isSafeInteger(total)){errors.push('El importe es demasiado elevado.');continue;}cents+=total;
-      const groupKey=JSON.stringify([line.id,key(color)]),group=groups.get(groupKey)||{name:product.nombre,color,quantity:0,minimum:min};group.quantity+=qty;groups.set(groupKey,group);
-      items.push({...line,name:product.nombre,reference:productTools.reference(product,line.id),color,quantity:qty,unitCents:unit,totalCents:total,minimum:min,leadTime:product.plazo||'A confirmar',status:product.estado||'disponible'});
+      const minimumType=productTools.minimumType(trade),groupKey=JSON.stringify([line.id,minimumType==='color'?key(color):null]),group=groups.get(groupKey)||{name:product.nombre,color,quantity:0,minimum:min,minimumType};group.quantity+=qty;groups.set(groupKey,group);
+      items.push({...line,name:product.nombre,reference:productTools.reference(product,line.id),color,quantity:qty,unitCents:unit,totalCents:total,minimum:min,minimumType,leadTime:product.plazo||'A confirmar',status:product.estado||'disponible'});
     }
-    if(enforceMinimum)for(const group of groups.values())if(group.quantity<group.minimum)errors.push(group.name+' · '+group.color+': tienes '+group.quantity+'; el mínimo es '+group.minimum+' unidades por color.');
+    if(enforceMinimum)for(const group of groups.values())if(group.quantity<group.minimum)errors.push(group.name+(group.minimumType==='color'?' · '+group.color:'')+': tienes '+group.quantity+'; el mínimo es '+group.minimum+' unidades '+productTools.minimumLabel({minimoTipo:group.minimumType})+'.');
     if(!Number.isSafeInteger(cents))errors.push('El total es demasiado elevado.');
     if(lines.length>30)errors.push('El pedido admite hasta 30 líneas. Divide el pedido en dos.');
     return {items,errors:[...new Set(errors)],totalCents:cents,valid:lines.length>0&&!errors.length};
@@ -37,5 +37,5 @@
     const text=parts.join('\n');if(text.length>6500)throw Error('El mensaje es demasiado largo para WhatsApp. Reduce los comentarios o divide el pedido.');
     return 'https://wa.me/34678746953?text='+encodeURIComponent(text);
   }
-  scope.CATALOGO_ORDERS={quote,whatsapp,key};if(typeof module!=='undefined')module.exports=scope.CATALOGO_ORDERS;
+  scope.CATALOGO_ORDERS={quote,whatsapp,key,minimumLabel:productTools.minimumLabel};if(typeof module!=='undefined')module.exports=scope.CATALOGO_ORDERS;
 })(typeof window==='undefined'?globalThis:window);
