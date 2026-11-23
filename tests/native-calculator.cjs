@@ -20,6 +20,7 @@ function click(id){get(id).dispatchEvent(new window.Event('click',{bubbles:true}
 const euroValue=id=>Number(get(id).textContent.replace(/[^\d,.-]/g,'').replace(',','.'));
 (async()=>{
 assert.equal(window.document.querySelectorAll('iframe').length,0);assert(get('materialRows').children.length>0);assert(euroValue('recommendedPrice')>0);
+assert.equal(get('wholesaleProfit').value,'20');assert.match(get('wholesaleProfitExample').textContent,/12,00/);assert.match(get('wholesaleProfitExample').textContent,/2,00/);
 for(const [id,value] of Object.entries({quantity:1,printDays:0,printHours:0,printMinutes:0,printSeconds:0,operatorCount:0,printerPowerKw:0,maintenancePercent:0,profitPercent:30,vatPercent:21,fixedPricing:'no',wholesaleProfit:20,shopMargin:40,targetPvp:0,shopMinimum:10}))set(id,value);
 field('weight',.1);field('price',10);field('factor',1);
 const aux=root.querySelector('.aux-item input');aux.value='0';aux.dispatchEvent(new window.Event('input',{bubbles:true}));
@@ -45,7 +46,9 @@ for(const minimum of [5,20])for(const channel of ['shop','direct']){
 set('quantity',1);field('weight',.1);set('targetPvp',0);set('shopMinimum',10);set('saleChannel','direct');
 click('printButton');assert.equal(printCalls,1);
 assert(values.has('dev3d-catalogo-costes-v1'));instance.destroy();mount.replaceChildren();
+const savedSettings=JSON.parse(values.get('dev3d-catalogo-costes-v1'));savedSettings.values.wholesaleProfit='';values.set('dev3d-catalogo-costes-v1',JSON.stringify(savedSettings));
 root=content();instance=window.DEV3D_CALCULATOR.mount(root,{onDraft:data=>{draft=data;return true;}});assert.equal(get('pieceName').value,'Pieza nativa');assert.equal(euroValue('recommendedPrice'),2);
+assert.equal(get('wholesaleProfit').value,'20');set('wholesaleProfit',25);assert.match(get('wholesaleProfitExample').textContent,/12,50/);assert.match(get('wholesaleProfitExample').textContent,/2,50/);assert.equal(get('profitPercent').value,'30');instance.destroy();root=content();instance=window.DEV3D_CALCULATOR.mount(root,{onDraft:data=>{draft=data;return true;}});assert.equal(get('wholesaleProfit').value,'25');set('wholesaleProfit',20);
 click('gcodeTab');const file={name:'fixture.gcode',size:80,text:async()=>';TIME:3600\n; filament used [g] = 10\n; filament_type = PLA\n'};Object.defineProperty(get('gcodeInput'),'files',{configurable:true,value:[file]});get('gcodeInput').dispatchEvent(new window.Event('change',{bubbles:true}));await new Promise(resolve=>setTimeout(resolve,80));assert.equal(get('pieceName').value,'fixture');assert(get('detectedMaterial').textContent.includes('10 g'),JSON.stringify({material:get('detectedMaterial').textContent,status:get('analysisStatus').textContent,note:get('analysisNote').textContent}));assert(get('detectedTime').textContent.includes('1'));
 const zip=fs.readFileSync(path.join(__dirname,'fixtures/multiplaca.gcode.3mf'));
 const multi={name:'multiplaca.gcode.3mf',size:zip.length,arrayBuffer:async()=>zip.buffer.slice(zip.byteOffset,zip.byteOffset+zip.byteLength)};

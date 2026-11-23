@@ -32,6 +32,8 @@ function commercialOfferLines() {
 
 function renderCommercialOffer() {
   const options = commercialOptions();
+  const wholesaleRate=Number(options.wholesaleProfit),validRate=String(options.wholesaleProfit).trim()!==''&&Number.isFinite(wholesaleRate)&&wholesaleRate>=0;
+  $('#wholesaleProfitExample').textContent=validRate?`Ejemplo con un coste de 10 € sin IVA: cobrarías ${euro.format(10*(1+wholesaleRate/100))} sin IVA y tu beneficio sería ${euro.format(10*wholesaleRate/100)}.`:'Introduce un porcentaje para ver el ejemplo.';
   const o = computeCommercialOffer(state.lastCosts, options);
   state.offer = o;
   $('#fixedFields').classList.toggle('hidden', !o.fixed);
@@ -511,6 +513,7 @@ function loadSettings(snapshot) {
     fieldIds.forEach((id) => {
       if (saved.values[id] !== undefined) document.getElementById(id).value = saved.values[id];
     });
+    if(String(saved.values.wholesaleProfit??'').trim()==='')$('#wholesaleProfit').value=defaults.wholesaleProfit;
     if (saved.defaultsVersion !== SETTINGS_DEFAULTS_VERSION && String(saved.values.maintenancePercent) === "8") {
       $("#maintenancePercent").value = defaults.maintenancePercent;
     }
