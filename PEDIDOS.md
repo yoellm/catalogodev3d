@@ -29,3 +29,5 @@ Pruebas locales de permisos: iniciar el emulador de Realtime Database en 127.0.0
 ## Lectura de la calculadora
 
 El resultado principal muestra lo que cobra DEV3D Studio con IVA, por unidad y por pedido. La venta para tiendas presenta su tarifa mayorista y, en un bloque separado, el PVP de reventa y el margen de la tienda. El beneficio propio se muestra sin IVA. El desglose de costes y el detalle del IVA se abren solo cuando se necesitan. Se conservan las fórmulas y redondeos anteriores.
+
+Al preparar un producto desde la calculadora, precio siempre toma la tarifa de venta directa por unidad y mayorista toma la tarifa para tiendas por unidad, ambos con IVA. El modo de visualización, el total del lote y el PVP de reventa de la tienda no cambian estos campos. El mínimo se guarda solo en dev3dCatalogoMayorista y no afecta al precio público. tests/calculator-catalog-prices.cjs verifica el recorrido completo de calculadora, formulario y escritura de ambos registros.

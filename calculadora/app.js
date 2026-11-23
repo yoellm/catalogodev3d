@@ -133,13 +133,17 @@ function roundSalePrice(value, step = 0.5) {
 function openProductDraftInInventory() {
   if (!state.offer?.valid) return showToast("Revisa los avisos de la tarifa comercial");
   const options = commercialOptions();
+  const publicOffer = computeCommercialOffer(state.lastCosts, {...options, saleChannel: 'direct'});
   const shopOffer = computeCommercialOffer(state.lastCosts, {...options, saleChannel: 'shop'});
+  if (!publicOffer.valid) return showToast('Revisa el precio de venta directa antes de preparar el producto');
   if (!shopOffer.valid) return showToast('Selecciona «Venta a tienda» y revisa su beneficio y mínimo antes de preparar el producto');
   if (!active) return;
   const data = {
     type: 'dev3d:product-draft',
     nombre: $("#pieceName").value.trim() || 'Pieza 3D',
-    precio: state.offer.shop ? state.offer.pvp : state.offer.gross,
+    // Catalog prices always describe one unit. The quote total and the shop's
+    // resale PVP belong to the quote, regardless of the selected screen mode.
+    precio: publicOffer.gross,
     mayorista: shopOffer.gross,
     minimo: Number(options.shopMinimum),
     descripcion: options.fixedPricing === 'yes' ? 'Precio cerrado para las personalizaciones de este producto.' : ''
@@ -147,7 +151,7 @@ function openProductDraftInInventory() {
   if (typeof onDraft !== 'function') return showToast('No se pudo preparar el producto. Vuelve al panel y abre la calculadora de nuevo.');
   const accepted = onDraft(data);
   if (accepted === false) return;
-  showToast("Borrador enviado al formulario del catálogo. Revisa los datos antes de guardar.");
+  showToast('Precios por unidad preparados. El mínimo se aplica solo a tiendas.');
 }
 
 function escapeHtml(text) {

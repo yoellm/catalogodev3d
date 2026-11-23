@@ -20,15 +20,31 @@ const calculatorSource=fs.readFileSync(path.join(root,'calculadora/app.js'),'utf
 const sender=calculatorSource.match(/function openProductDraftInInventory\(\) \{[\s\S]*?\n\}/)[0];
 const calculator={active:true,onDraft:data=>{received={data};return true;},state:{offer,lastCosts:costs},commercialOptions:()=>options,computeCommercialOffer:calc,$:()=>({value:'Llavero'}),showToast:()=>{}};
 vm.runInNewContext(sender+'; openProductDraftInInventory();',calculator);
-assert.equal(received.data.precio,2.44); assert.equal(received.data.mayorista,1.46); assert.equal(received.data.minimo,10);
+assert.equal(received.data.precio,2); assert.equal(received.data.mayorista,1.46); assert.equal(received.data.minimo,10);
 assert(validateDraft(received.data));
 for(const bad of [{...received.data,precio:NaN},{...received.data,minimo:0},{...received.data,minimo:2.2},{...received.data,nombre:''},{...received.data,precio:'2'},{...received.data,type:'other'}]) assert.equal(validateDraft(bad),null);
 assert.equal(validateDraft({...received.data,unitCost:10}).unitCost,undefined);
 calculator.state.offer=calc(costs,{...options,saleChannel:'direct'});
 vm.runInNewContext(sender+'; openProductDraftInInventory();',calculator);
 assert.equal(received.data.precio,2); assert.equal(received.data.mayorista,1.46);
+// Importing the same unit costs must never depend on mode, batch size, shop
+// minimum or the separate target PVP for the shop's resale.
+for(const quantity of [1,5,10])for(const minimum of [1,5,20])for(const channel of ['shop','direct']){
+ const config={...options,saleChannel:channel,shopMinimum:minimum,targetPvp:123};
+ calculator.commercialOptions=()=>config;calculator.state.lastCosts={...costs,quantity};calculator.state.offer=calc(calculator.state.lastCosts,config);
+ vm.runInNewContext(sender+'; openProductDraftInInventory();',calculator);
+ assert.equal(received.data.precio,2);assert.equal(received.data.mayorista,1.46);assert.equal(received.data.minimo,minimum);
+}
+for(const channel of ['shop','direct']){
+ const config={...options,saleChannel:channel,fixedPricing:'yes',shopMinimum:5};
+ calculator.commercialOptions=()=>config;calculator.state.lastCosts={...costs,quantity:10};calculator.state.offer=calc(calculator.state.lastCosts,config);
+ vm.runInNewContext(sender+'; openProductDraftInInventory();',calculator);
+ assert.equal(received.data.precio,1.74);assert.equal(received.data.mayorista,1.60);assert.equal(received.data.minimo,5);
+}
+calculator.commercialOptions=()=>options;calculator.state.lastCosts=costs;calculator.state.offer=offer;
+vm.runInNewContext(sender+'; openProductDraftInInventory();',calculator);
 const nodes={};
-function node(id){return nodes[id] ||= {hidden:false,value:'',textContent:'',attrs:{},getAttribute(k){return this.attrs[k]??null;},set src(v){this.attrs.src=v;},removeAttribute(k){delete this.attrs[k];},replaceChildren(){},scrollIntoView(){},querySelector(){return {disabled:false};}};}
+function node(id){return nodes[id] ||= {hidden:false,value:'',textContent:'',attrs:{},dataset:{},getAttribute(k){return this.attrs[k]??null;},set src(v){this.attrs.src=v;},removeAttribute(k){delete this.attrs[k];},replaceChildren(){},scrollIntoView(){},querySelector(){return {disabled:false};}};}
 const form=node('productForm');
 node('productDialog').showModal=function(){this.open=true;};node('productDialog').close=function(){this.open=false;this.onclose?.();};
 form.elements=Object.fromEntries(['id','nombre','descripcion','categoria','imagen','precio','mayorista','minimo'].map(k=>[k,{value:''}]));

@@ -97,7 +97,9 @@
         $('formTitle').textContent = 'Nuevo producto desde la calculadora';
         showAdminView('catalog');
         uploadedPhoto=null;uploadedGallery.clear(); showProductEditor(true);
-        status('Precios y mínimo preparados. Añade la foto y la categoría, revisa los datos y pulsa Guardar producto para publicarlo.');
+        $('productMessage').textContent='Los dos precios son por 1 unidad, con IVA incluido. El pedido mínimo se aplica solo a tiendas y por color.';
+        $('productMessage').dataset.kind='info';
+        status('Precios por unidad preparados. Añade la foto y la categoría, revisa los datos y pulsa Guardar producto para publicarlo.');
         form.scrollIntoView({behavior:'smooth'});
     return true;
   }

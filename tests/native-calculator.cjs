@@ -32,8 +32,17 @@ set('pieceName','Pieza nativa');set('saleChannel','shop');assert.equal(euroValue
 assert.equal(get('shopResaleResult').hidden,false);assert.equal(euroValue('shopResalePrice'),2.44);assert.match(get('offerTitle').textContent,/cobras a la tienda/);assert.match(get('offerPriceTotal').textContent,/14,60/);assert.match(get('offerPriceLabel').textContent,/IVA incluido/);
 assert.match(get('offerResults').textContent,/Mínimo por color/);assert.equal(get('profitPercent').closest('label').hidden,true);assert.equal(get('wholesaleProfit').closest('label').hidden,false);
 set('targetPvp',2);assert.match(get('offerStatus').textContent,/no deja a la tienda/);assert.equal(euroValue('offerPriceAmount'),1.46);assert.match(get('shopResaleMargin').textContent,/40,16/);assert.match(get('shopResaleTarget').textContent,/27%/);set('targetPvp',0);
-click('inventoryButton');assert.equal(draft.nombre,'Pieza nativa');assert.equal(draft.precio,2.44);assert.equal(draft.mayorista,1.46);assert.equal(draft.minimo,10);
+click('inventoryButton');assert.equal(draft.nombre,'Pieza nativa');assert.equal(draft.precio,2);assert.equal(draft.mayorista,1.46);assert.equal(draft.minimo,10);
 set('saleChannel','direct');click('inventoryButton');assert.equal(draft.precio,2);assert.equal(draft.mayorista,1.46);assert.equal(get('shopResaleResult').hidden,true);assert.equal(get('profitPercent').closest('label').hidden,false);assert.equal(get('wholesaleProfit').closest('label').hidden,true);
+// A ten-piece batch still exports unit prices. The shop minimum only changes
+// its quote total, and a resale target must not overwrite our own public price.
+set('quantity',10);field('weight',1);
+for(const minimum of [5,20])for(const channel of ['shop','direct']){
+ set('shopMinimum',minimum);set('saleChannel',channel);set('targetPvp',123);click('inventoryButton');
+ assert.equal(draft.precio,2);assert.equal(draft.mayorista,1.46);assert.equal(draft.minimo,minimum);
+ assert.match(get('offerPriceTotal').textContent,channel==='shop'?(minimum===20?/29,20/:/14,60/):/20,00/);
+}
+set('quantity',1);field('weight',.1);set('targetPvp',0);set('shopMinimum',10);set('saleChannel','direct');
 click('printButton');assert.equal(printCalls,1);
 assert(values.has('dev3d-catalogo-costes-v1'));instance.destroy();mount.replaceChildren();
 root=content();instance=window.DEV3D_CALCULATOR.mount(root,{onDraft:data=>{draft=data;return true;}});assert.equal(get('pieceName').value,'Pieza nativa');assert.equal(euroValue('recommendedPrice'),2);
