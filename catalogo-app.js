@@ -11,6 +11,7 @@
   let subscriptions = [], tradeStop = null, productHashHandled = false, calculatorInstance = null, productSaving = false, uploadedPhoto = null;
   let adminProductPage = 1;
   let historyView=null,submitOrder=null,historyStop=null;
+  let pricingDraft=null,budgetAPI=null;
   const uploadedGallery=new Map();
   let categoryFromLink=catalogPage?new URL('https://www.dev3dstudio.es/catalogo.html'+(location.search||'')).searchParams.get('categoria'):null;
   function renderCategoryNavigation(){
@@ -85,18 +86,47 @@
       }
     }
   }
+  function refreshPricingWarnings(){
+    if(!adminPage||!$('productWarnings'))return;const fields=$('productForm').elements;
+    const notes=window.CATALOGO_PRODUCTS?.pricingWarnings?.(Object.fromEntries(['precio','mayorista','minimo','estado','plazo'].map(key=>[key,fields[key]?.value])))||[];
+    $('productWarnings').hidden=!notes.length;$('productWarningList').replaceChildren(...notes.map(note=>el('li',note)));
+  }
+  function fillProductEditor(id){
+    const p=publicProducts[id];if(!p)return false;const f=$('productForm');f.reset();uploadedPhoto=null;uploadedGallery.clear();$('productMessage').textContent='';
+    for(const key of ['nombre','descripcion','categoria','imagen','precio','wallapop','plazo','referencia'])f.elements[key].value=p[key]??'';
+    f.elements.estado.value=p.estado||'disponible';f.elements.colores.value=Object.values(p.colores||{}).join(', ');f.elements.personalizable.value=String(p.personalizable!==false);f.elements.galeria.value=window.CATALOGO_PRODUCTS.gallery(p).filter(url=>url!==safeUrl(p.imagen)).join('\n');
+    f.elements.referencia.value=window.CATALOGO_PRODUCTS.reference(p,id);f.elements.id.value=id;f.elements.mayorista.value=wholesale[id]?.precio??'';f.elements.minimo.value=wholesale[id]?.minimo??1;
+    $('formTitle').textContent='Editar producto';refreshPricingWarnings();showProductEditor(true);return true;
+  }
+  function renderPriceTargets(){
+    if(!adminPage||!pricingDraft)return;const selected=$('pricingTarget').value,query=String($('pricingSearch').value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+    const entries=Object.entries(publicProducts).filter(([id,p])=>[p.nombre,window.CATALOGO_PRODUCTS.reference(p,id)].join(' ').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().includes(query)).sort((a,b)=>a[1].nombre.localeCompare(b[1].nombre,'es'));
+    $('pricingTarget').replaceChildren(...entries.map(([id,p])=>{const option=el('option',p.nombre+' · '+window.CATALOGO_PRODUCTS.reference(p,id));option.value=id;return option;}));
+    $('pricingTarget').value=entries.some(([id])=>id===selected)?selected:entries[0]?.[0]||'';
+    previewPriceTarget();
+  }
+  function previewPriceTarget(){
+    const id=$('pricingTarget').value,p=publicProducts[id];$('pricingAccept').disabled=!p||!pricingDraft;$('pricingPreview').replaceChildren();
+    if(!p||!pricingDraft){$('pricingPreview').textContent='No hay productos que coincidan con la búsqueda.';return;}
+    for(const [label,oldValue,newValue] of [['Público / unidad',money(p.precio),money(pricingDraft.precio)],['Mayorista / unidad',wholesale[id]?money(wholesale[id].precio):'Sin configurar',money(pricingDraft.mayorista)],['Mínimo para tiendas por color',wholesale[id]?.minimo||'Sin configurar',pricingDraft.minimo]])$('pricingPreview').append(el('p',label+': '+oldValue+' → '+newValue));
+  }
+  function openPriceUpdater(data){
+    if(!admin||!adminPage)return false;pricingDraft=window.CATALOGO_DRAFT.validateDraft(data);if(!pricingDraft)return false;
+    $('pricingSearch').value='';renderPriceTargets();$('pricingProductDialog').showModal();return true;
+  }
   function importCalculatorDraft(data){
     if (!admin || !adminPage) return false;
     const draft=window.CATALOGO_DRAFT.validateDraft(data);
     if (!draft) return false;
         const form = $('productForm');
-        if ((form.elements.id.value || form.elements.nombre.value.trim()) && !confirm('Hay un producto en edición. ¿Sustituir el formulario por un nuevo borrador de la calculadora?')) return false;
-        form.reset();
-        form.elements.id.value = '';
-        for (const [key,value] of Object.entries(draft)) form.elements[key].value = value;
-        $('formTitle').textContent = 'Nuevo producto desde la calculadora';
+        if(draft.productId&&!publicProducts[draft.productId]){status('El producto ya no está en el catálogo. Selecciona otro producto.');return false;}
+        const sameProduct=draft.productId&&form.elements.id.value===draft.productId;
+        if (!sameProduct&&(form.elements.id.value || form.elements.nombre.value.trim()) && !confirm('Hay un producto en edición. ¿Sustituir el formulario por el producto elegido de la calculadora?')) return false;
+        if(draft.productId){if(!sameProduct)fillProductEditor(draft.productId);for(const key of ['precio','mayorista','minimo'])form.elements[key].value=draft[key];}
+        else{form.reset();form.elements.id.value='';for(const [key,value] of Object.entries(draft))form.elements[key].value=value;uploadedPhoto=null;uploadedGallery.clear();}
+        $('formTitle').textContent = draft.productId?'Actualizar precios del producto':'Nuevo producto desde la calculadora';
         showAdminView('catalog');
-        uploadedPhoto=null;uploadedGallery.clear(); showProductEditor(true);
+        refreshPricingWarnings();showProductEditor(true);
         $('productMessage').textContent='Los dos precios son por 1 unidad, con IVA incluido. El pedido mínimo se aplica solo a tiendas y por color.';
         $('productMessage').dataset.kind='info';
         status('Precios por unidad preparados. Añade la foto y la categoría, revisa los datos y pulsa Guardar producto para publicarlo.');
@@ -126,7 +156,7 @@
       try {
         const mount = $('calculatorMount');
         mount.replaceChildren($('calculatorTemplate').content.cloneNode(true));
-        calculatorInstance = window.DEV3D_CALCULATOR.mount(mount.firstElementChild,{onDraft:importCalculatorDraft});
+        calculatorInstance = window.DEV3D_CALCULATOR.mount(mount.firstElementChild,{onDraft:importCalculatorDraft,onUpdatePrices:openPriceUpdater,budgets:budgetAPI});
       } catch(error) { console.error(error); $('calculatorMount').replaceChildren(); status('No se pudo abrir la calculadora. Recarga la página e inténtalo de nuevo.'); }
     }
     $('viewTitle').focus?.({preventScroll:true});
@@ -155,6 +185,11 @@
     const app = appSDK.initializeApp(window.CATALOGO_CONFIG.firebaseConfig, 'dev3d-catalog');
     const db = database.getDatabase(app, databaseURL), auth = authentication.getAuth(app), storage = storageSDK.getStorage(app);
     const path = name => name ? database.ref(db, name) : database.ref(db);
+    if(adminPage)budgetAPI={
+      watch(callback,error){const owner=currentUser?.uid;if(!admin||!owner)return ()=>{};return database.onValue(path('dev3dPresupuestos/'+owner),snapshot=>{if(admin&&currentUser?.uid===owner)callback(snapshot.val());},error);},
+      async save({id,name,calculo}){if(!admin||!currentUser)throw Error('Acceso exclusivo del administrador.');const uid=currentUser.uid,key=id||database.push(path('dev3dPresupuestos/'+uid)).key;await database.set(path('dev3dPresupuestos/'+uid+'/'+key),{nombre:name,calculo,actualizado:database.serverTimestamp()});return key;},
+      async remove(id){if(!admin||!currentUser)throw Error('Acceso exclusivo del administrador.');await database.set(path('dev3dPresupuestos/'+currentUser.uid+'/'+id),null);}
+    };
     if(catalogPage&&window.CATALOGO_HISTORY)submitOrder=window.CATALOGO_HISTORY.sender({sdk:database,db,getState:orderState});
     if((adminPage||shopPage)&&window.CATALOGO_HISTORY_UI)historyView=window.CATALOGO_HISTORY_UI.mount({document,admin:adminPage,api:window.CATALOGO_HISTORY,saveStatus:async(uid,id,state,note)=>{
       if(!admin||!currentUser)throw Error('Acceso exclusivo del administrador.');
@@ -298,6 +333,7 @@
     }
     function renderAdmin() {
       if (!admin) return;
+      if(pricingDraft)renderPriceTargets();
       $('dashboardProducts').textContent = Object.keys(publicProducts).length + ' productos';
       $('dashboardShops').textContent = Object.keys(shops).length + ' tiendas';
       $('adminProducts').replaceChildren();
@@ -323,7 +359,7 @@
         for(const [label,value] of [['Precio público',money(p.precio)],['Mayorista / ud.',wholesale[id]?money(wholesale[id].precio):'Sin configurar'],['Mínimo por color',wholesale[id]?.minimo?wholesale[id].minimo+' uds.':'—']]){const cell=el('td',value);cell.dataset.label=label;row.append(cell);}
         const actions=el('td'),buttons=el('div',undefined,'product-row-actions'),edit=el('button','Editar','secondary'),duplicate=el('button','Duplicar','secondary'),remove=el('button','Eliminar','danger-button');
         edit.setAttribute('aria-label','Editar '+p.nombre);remove.setAttribute('aria-label','Eliminar '+p.nombre);
-        edit.onclick=()=>{if(productSaving)return;const f=$('productForm');f.reset();uploadedPhoto=null;uploadedGallery.clear();$('productMessage').textContent='';for(const key of ['nombre','descripcion','categoria','imagen','precio','wallapop','plazo','referencia'])f.elements[key].value=p[key]??'';f.elements.estado.value=p.estado||'disponible';f.elements.colores.value=Object.values(p.colores||{}).join(', ');f.elements.personalizable.value=String(p.personalizable!==false);f.elements.galeria.value=window.CATALOGO_PRODUCTS.gallery(p).filter(url=>url!==safeUrl(p.imagen)).join('\n');f.elements.referencia.value=window.CATALOGO_PRODUCTS.reference(p,id);f.elements.id.value=id;f.elements.mayorista.value=wholesale[id]?.precio??'';f.elements.minimo.value=wholesale[id]?.minimo??1;$('formTitle').textContent='Editar producto';showProductEditor(true);};
+        edit.onclick=()=>{if(!productSaving)fillProductEditor(id);};
         duplicate.setAttribute('aria-label','Duplicar '+p.nombre);duplicate.onclick=()=>{if(productSaving)return;edit.onclick();const f=$('productForm');f.elements.id.value='';f.elements.nombre.value=String(p.nombre).slice(0,142)+' (copia)';f.elements.wallapop.value='';f.elements.referencia.value='';$('formTitle').textContent='Duplicar producto';$('productMessage').textContent='Revisa los datos y guarda para publicar la copia. El producto original se conserva.';};
         remove.onclick=async()=>{if(!admin||!confirm('¿Eliminar «'+p.nombre+'» del catálogo?'))return;remove.disabled=true;try{await database.update(path(''),{['dev3dCatalogoPublico/'+id]:null,['dev3dCatalogoMayorista/'+id]:null});$('catalogListMessage').textContent='Producto eliminado.';$('catalogListMessage').dataset.kind='success';}catch{$('catalogListMessage').textContent='No se pudo eliminar el producto. Comprueba la conexión y tus permisos.';$('catalogListMessage').dataset.kind='error';}finally{remove.disabled=false;}};
         name.append(el('small',window.CATALOGO_PRODUCTS.availability(p)+(p.plazo?' · '+p.plazo:'')));buttons.append(edit,duplicate,remove);actions.append(buttons);row.append(actions);body.append(row);
@@ -387,6 +423,10 @@
       $('goCatalog').onclick = () => showAdminView('catalog');
       $('goShops').onclick = () => showAdminView('shops');
       $('goOrders').onclick = () => showAdminView('orders');
+      $('pricingSearch').oninput=renderPriceTargets;$('pricingTarget').onchange=previewPriceTarget;
+      $('pricingCancel').onclick=()=>$('pricingProductDialog').close();$('pricingProductDialog').onclose=()=>{pricingDraft=null;};
+      $('pricingAccept').onclick=()=>{if(!admin||!pricingDraft)return;const data={...pricingDraft,type:'dev3d:product-draft',productId:$('pricingTarget').value};if(!publicProducts[data.productId]){renderPriceTargets();return;}if(importCalculatorDraft(data))$('pricingProductDialog').close();};
+      $('productForm').oninput=refreshPricingWarnings;
       $('openCalculator').onclick = () => showCalculator(true);
       $('closeCalculator').onclick = () => showAdminView('home');
       function productFeedback(message,kind='info'){$('productMessage').textContent=message;$('productMessage').dataset.kind=kind;}
@@ -394,7 +434,7 @@
       $('productDialog').oncancel=event=>{if(productSaving)event.preventDefault();};
       $('productDialog').onclose=()=>{$('productForm').hidden=true;document.body.classList?.remove('product-modal-open');};
       $('resetProduct').onclick = () => { if(productSaving)return;$('productForm').reset(); $('formTitle').textContent = 'Nuevo producto'; uploadedPhoto=null;uploadedGallery.clear(); productFeedback('');showProductEditor(false); };
-      $('newProduct').onclick=()=>{if(productSaving)return;$('productForm').reset();uploadedPhoto=null;uploadedGallery.clear();$('formTitle').textContent='Nuevo producto';productFeedback('');$('catalogListMessage').textContent='';showProductEditor(true);$('productForm').elements.nombre.focus();};
+      $('newProduct').onclick=()=>{if(productSaving)return;$('productForm').reset();uploadedPhoto=null;uploadedGallery.clear();$('formTitle').textContent='Nuevo producto';productFeedback('');refreshPricingWarnings();$('catalogListMessage').textContent='';showProductEditor(true);$('productForm').elements.nombre.focus();};
       for(const id of ['adminProductSearch','adminProductCategory','adminProductSort'])$(id).oninput=()=>{adminProductPage=1;renderAdmin();};
       $('adminProductPrev').onclick=()=>{if(adminProductPage>1){adminProductPage--;renderAdmin();}};
       $('adminProductNext').onclick=()=>{adminProductPage++;renderAdmin();};
@@ -402,6 +442,8 @@
         event.preventDefault();if(productSaving)return;
         if(!admin){productFeedback('Inicia sesión con una cuenta de administrador para guardar productos.','error');return;}
         const f=event.currentTarget,fields=f.elements;
+        refreshPricingWarnings();
+        if(fields.id.value&&!publicProducts[fields.id.value]){productFeedback('Este producto ya no está en el catálogo. Cierra la ficha y selecciona otro producto.','error');return;}
         let values;
         try{values=window.CATALOGO_PRODUCTS.validate(Object.fromEntries(['nombre','descripcion','categoria','precio','mayorista','minimo','wallapop','estado','plazo','colores','personalizable','referencia'].map(key=>[key,fields[key].value])));}
         catch(error){productFeedback(error.message,'error');fields[error.field]?.focus();return;}
@@ -472,6 +514,7 @@
     }
     authentication.onAuthStateChanged(auth, async user => {
       const version = ++generation;
+      if(adminPage){pricingDraft=null;$('pricingProductDialog').close();if(currentUser?.uid!==user?.uid&&calculatorInstance){calculatorInstance.destroy();calculatorInstance=null;$('calculatorMount').replaceChildren();}}
       if(currentUser?.uid&&currentUser.uid!==user?.uid)window.CATALOGO_ORDER_DRAFT?.create(orderStorage()).remove(currentUser.uid);
       resetSubscriptions(); currentUser = user; currentShopProfile = null; wholesale = {}; publicProducts = {}; shops = {};
       historyView?.reset();

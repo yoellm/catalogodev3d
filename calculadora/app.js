@@ -1,8 +1,8 @@
 (function(scope){
   'use strict';
-  function mount(root,{onDraft}={}){
+  function mount(root,{onDraft,onUpdatePrices,budgets}={}){
     if (!root || typeof root.querySelector !== 'function') throw new Error('No se encuentra la pantalla de la calculadora.');
-    let active=true;
+    let active=true,analysisVersion=0;
     // Todas las consultas quedan dentro de esta pantalla.
     const document={querySelector:selector=>root.querySelector(selector),getElementById:id=>root.querySelector('#'+id)};
     const computeCommercialOffer=scope.DEV3D_PRICING.computeCommercialOffer;
@@ -65,6 +65,7 @@ function renderCommercialOffer() {
   $('#copyOffer').disabled = !o.valid;
   $('#copyOffer').textContent=o.shop?'Copiar oferta para la tienda':'Copiar oferta para el cliente';
   $('#inventoryButton').disabled = !o.valid;
+  $('#updateCatalogButton').disabled = !o.valid || typeof onUpdatePrices !== 'function';
 }
 const $ = (selector) => document.querySelector(selector);
 
@@ -130,7 +131,7 @@ function roundSalePrice(value, step = 0.5) {
   return Math.ceil((safeValue - 1e-9) / safeStep) * safeStep;
 }
 
-function openProductDraftInInventory() {
+function openProductDraftInInventory(mode) {
   if (!state.offer?.valid) return showToast("Revisa los avisos de la tarifa comercial");
   const options = commercialOptions();
   const publicOffer = computeCommercialOffer(state.lastCosts, {...options, saleChannel: 'direct'});
@@ -148,8 +149,9 @@ function openProductDraftInInventory() {
     minimo: Number(options.shopMinimum),
     descripcion: options.fixedPricing === 'yes' ? 'Precio cerrado para las personalizaciones de este producto.' : ''
   };
-  if (typeof onDraft !== 'function') return showToast('No se pudo preparar el producto. Vuelve al panel y abre la calculadora de nuevo.');
-  const accepted = onDraft(data);
+  const receiver=mode==='update'?onUpdatePrices:onDraft;
+  if (typeof receiver !== 'function') return showToast('No se pudo preparar el producto. Vuelve al panel y abre la calculadora de nuevo.');
+  const accepted = receiver(data);
   if (accepted === false) return;
   showToast('Precios por unidad preparados. El mínimo se aplica solo a tiendas.');
 }
@@ -502,9 +504,9 @@ function saveSettings() {
   }
 }
 
-function loadSettings() {
+function loadSettings(snapshot) {
   try {
-    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
+    const saved = snapshot || JSON.parse(localStorage.getItem(STORAGE_KEY));
     if (!saved?.values) return;
     fieldIds.forEach((id) => {
       if (saved.values[id] !== undefined) document.getElementById(id).value = saved.values[id];
@@ -1082,6 +1084,7 @@ async function analyze3mf(file) {
 }
 
 async function analyzeFile(file) {
+  if(!active)return;const version=++analysisVersion;
   $("#fileResult").classList.remove("hidden");
   $("#dropzone").classList.add("hidden");
   $("#fileName").textContent = file.name;
@@ -1096,6 +1099,7 @@ async function analyzeFile(file) {
     await new Promise((resolve) => setTimeout(resolve, 30));
     const is3mf = /\.3mf$/i.test(file.name);
     const analysis = is3mf ? await analyze3mf(file) : analyzeGcodeText(await file.text());
+    if(!active||version!==analysisVersion)return;
     const { grams, seconds, lengthMm } = analysis;
     if (!(grams > 0) && !(seconds > 0)) throw new Error("No se han encontrado datos de impresión válidos.");
 
@@ -1152,6 +1156,7 @@ async function analyzeFile(file) {
     $("#analysisNote").classList.toggle("hidden", notes.length === 0);
     showToast(is3mf ? `${state.gcode.plates} placas analizadas correctamente` : "G-code analizado y material actualizado");
   } catch (error) {
+    if(!active||version!==analysisVersion)return;
     state.gcode = null;
     $("#gcodeTimeEditor").classList.add("hidden");
     $("#analysisStatus").innerHTML = `<span style="color:#d54b4b">${escapeHtml(error.message || "No se pudo leer el archivo.")}</span>`;
@@ -1160,6 +1165,7 @@ async function analyzeFile(file) {
 }
 
 function removeFile() {
+  analysisVersion++;
   state.gcode = null;
   $("#gcodeInput").value = "";
   $("#fileResult").classList.add("hidden");
@@ -1378,6 +1384,7 @@ $("#copyOffer").addEventListener("click", () => {
 });
 $("#copyButton").addEventListener("click", copySummary);
 $("#inventoryButton").addEventListener("click", openProductDraftInInventory);
+$("#updateCatalogButton").addEventListener('click',()=>openProductDraftInInventory('update'));
 $("#resetButton").addEventListener("click", resetAll);
 $("#printButton").addEventListener("click", () => window.print());
 
@@ -1394,8 +1401,15 @@ renderMaterialRows();
 renderAuxiliaryItems();
 updateAuxCustomField();
 switchMode(state.mode);
+const budgetView=scope.DEV3D_BUDGETS?.mount({root,api:budgets,isActive:()=>active,capture(){
+  if(!state.offer?.valid)throw Error('Revisa los datos de la tarifa antes de guardar el presupuesto.');
+  return {defaultsVersion:SETTINGS_DEFAULTS_VERSION,values:Object.fromEntries(fieldIds.map(id=>[id,document.getElementById(id).value])),materials:state.materials,auxiliaryItems:state.auxiliaryItems};
+},restore(snapshot){
+  analysisVersion++;state.gcode=null;loadSettings(snapshot);$('#gcodeInput').value='';$('#fileResult').classList.add('hidden');$('#dropzone').classList.remove('hidden');$('#gcodeTimeEditor').classList.add('hidden');
+  linkMirroredValues();renderMaterialRows();renderAuxiliaryItems();updateAuxCustomField();switchMode('manual');
+}});
 
-    return {destroy(){active=false;clearTimeout(state.toastTimer);}};
+    return {destroy(){active=false;analysisVersion++;budgetView?.destroy();clearTimeout(state.toastTimer);}};
   }
   scope.DEV3D_CALCULATOR=Object.freeze({mount});
 })(window);

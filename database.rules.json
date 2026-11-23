@@ -230,6 +230,193 @@
           }
         }
       }
+    },
+    "dev3dPresupuestos": {
+      "$uid": {
+        ".read": "auth != null && auth.uid == $uid && (auth.token.email == 'yoelmejias@outlook.es' || auth.token.email == 'irelandmorcillo@gmail.com')",
+        ".write": "auth != null && auth.uid == $uid && (auth.token.email == 'yoelmejias@outlook.es' || auth.token.email == 'irelandmorcillo@gmail.com')",
+        "$id": {
+          ".validate": "newData.hasChildren(['nombre','actualizado','calculo'])",
+          "nombre": {
+            ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 100"
+          },
+          "actualizado": {
+            ".validate": "newData.isNumber() && newData.val() == now"
+          },
+          "calculo": {
+            ".validate": "newData.hasChildren(['version','defaultsVersion','values','mode'])",
+            "version": {
+              ".validate": "newData.val() == 1"
+            },
+            "defaultsVersion": {
+              ".validate": "newData.isNumber() && newData.val() >= 0"
+            },
+            "mode": {
+              ".validate": "newData.val() == 'manual'"
+            },
+            "values": {
+              ".validate": "newData.hasChildren([\"pieceName\",\"printerName\",\"quantity\",\"printDays\",\"printHours\",\"printMinutes\",\"printSeconds\",\"filamentDiameter\",\"gcodeMaterialType\",\"gcodeBrand\",\"gcodeMaterialPrice\",\"gcodeErrorFactor\",\"printerPowerKw\",\"electricityPrice\",\"operatorCount\",\"laborHours\",\"laborMinutes\",\"laborSeconds\",\"laborRate\",\"maintenancePercent\",\"profitPercent\",\"vatPercent\",\"partnerMarkupPercent\",\"saleChannel\",\"fixedPricing\",\"wholesaleProfit\",\"shopMargin\",\"targetPvp\",\"shopMinimum\",\"rateName\",\"referenceCost\",\"costBuffer\"])",
+              "pieceName": {
+                ".validate": "newData.isString() && newData.val().length <= 200"
+              },
+              "printerName": {
+                ".validate": "newData.isString() && newData.val().length <= 200"
+              },
+              "quantity": {
+                ".validate": "newData.isString() && newData.val().length <= 200"
+              },
+              "printDays": {
+                ".validate": "newData.isString() && newData.val().length <= 200"
+              },
+              "printHours": {
+                ".validate": "newData.isString() && newData.val().length <= 200"
+              },
+              "printMinutes": {
+                ".validate": "newData.isString() && newData.val().length <= 200"
+              },
+              "printSeconds": {
+                ".validate": "newData.isString() && newData.val().length <= 200"
+              },
+              "filamentDiameter": {
+                ".validate": "newData.isString() && newData.val().length <= 200"
+              },
+              "gcodeMaterialType": {
+                ".validate": "newData.isString() && newData.val().length <= 200"
+              },
+              "gcodeBrand": {
+                ".validate": "newData.isString() && newData.val().length <= 200"
+              },
+              "gcodeMaterialPrice": {
+                ".validate": "newData.isString() && newData.val().length <= 200"
+              },
+              "gcodeErrorFactor": {
+                ".validate": "newData.isString() && newData.val().length <= 200"
+              },
+              "printerPowerKw": {
+                ".validate": "newData.isString() && newData.val().length <= 200"
+              },
+              "electricityPrice": {
+                ".validate": "newData.isString() && newData.val().length <= 200"
+              },
+              "operatorCount": {
+                ".validate": "newData.isString() && newData.val().length <= 200"
+              },
+              "laborHours": {
+                ".validate": "newData.isString() && newData.val().length <= 200"
+              },
+              "laborMinutes": {
+                ".validate": "newData.isString() && newData.val().length <= 200"
+              },
+              "laborSeconds": {
+                ".validate": "newData.isString() && newData.val().length <= 200"
+              },
+              "laborRate": {
+                ".validate": "newData.isString() && newData.val().length <= 200"
+              },
+              "maintenancePercent": {
+                ".validate": "newData.isString() && newData.val().length <= 200"
+              },
+              "profitPercent": {
+                ".validate": "newData.isString() && newData.val().length <= 200"
+              },
+              "vatPercent": {
+                ".validate": "newData.isString() && newData.val().length <= 200"
+              },
+              "partnerMarkupPercent": {
+                ".validate": "newData.isString() && newData.val().length <= 200"
+              },
+              "saleChannel": {
+                ".validate": "newData.isString() && newData.val().length <= 200"
+              },
+              "fixedPricing": {
+                ".validate": "newData.isString() && newData.val().length <= 200"
+              },
+              "wholesaleProfit": {
+                ".validate": "newData.isString() && newData.val().length <= 200"
+              },
+              "shopMargin": {
+                ".validate": "newData.isString() && newData.val().length <= 200"
+              },
+              "targetPvp": {
+                ".validate": "newData.isString() && newData.val().length <= 200"
+              },
+              "shopMinimum": {
+                ".validate": "newData.isString() && newData.val().length <= 200"
+              },
+              "rateName": {
+                ".validate": "newData.isString() && newData.val().length <= 200"
+              },
+              "referenceCost": {
+                ".validate": "newData.isString() && newData.val().length <= 200"
+              },
+              "costBuffer": {
+                ".validate": "newData.isString() && newData.val().length <= 200"
+              },
+              "$other": {
+                ".validate": false
+              }
+            },
+            "materials": {
+              "$index": {
+                ".validate": "$index.matches(/^([0-9]|[1-9][0-9])$/) && newData.hasChildren(['name','brand','nozzle','layer','kg','factor','price','unit','priceVat','color'])",
+                "name": {
+                  ".validate": "newData.isString() && newData.val().length <= 150"
+                },
+                "brand": {
+                  ".validate": "newData.isString() && newData.val().length <= 150"
+                },
+                "nozzle": {
+                  ".validate": "newData.isNumber() && newData.val() >= 0"
+                },
+                "layer": {
+                  ".validate": "newData.isNumber() && newData.val() >= 0"
+                },
+                "kg": {
+                  ".validate": "newData.isNumber() && newData.val() >= 0"
+                },
+                "factor": {
+                  ".validate": "newData.isNumber() && newData.val() >= 0"
+                },
+                "price": {
+                  ".validate": "newData.isNumber() && newData.val() >= 0"
+                },
+                "unit": {
+                  ".validate": "newData.val() == 'kg' || newData.val() == 'g'"
+                },
+                "priceVat": {
+                  ".validate": "newData.val() == 'net' || newData.val() == 'gross'"
+                },
+                "color": {
+                  ".validate": "newData.isString() && newData.val().length <= 7"
+                },
+                "$other": {
+                  ".validate": false
+                }
+              }
+            },
+            "auxiliaryItems": {
+              "$index": {
+                ".validate": "$index.matches(/^([0-9]|[1-9][0-9])$/) && newData.hasChildren(['name','amount'])",
+                "name": {
+                  ".validate": "newData.isString() && newData.val().length <= 150"
+                },
+                "amount": {
+                  ".validate": "newData.isNumber() && newData.val() >= 0"
+                },
+                "$other": {
+                  ".validate": false
+                }
+              }
+            },
+            "$other": {
+              ".validate": false
+            }
+          },
+          "$other": {
+            ".validate": false
+          }
+        }
+      }
     }
   }
 }

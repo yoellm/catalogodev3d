@@ -8,7 +8,7 @@ const values=new Map();const storage={getItem:k=>values.get(k)??null,setItem:(k,
 let printCalls=0,draft;
 window.print=()=>printCalls++;window.confirm=()=>true;
 const context=vm.createContext({window,document:window.document,localStorage:storage,navigator:{clipboard:{writeText:async()=>{}}},Intl,URL,console,structuredClone,setTimeout,clearTimeout,TextDecoder,TextEncoder,Uint8Array,DataView,Blob,Response,DecompressionStream,DOMParser:window.DOMParser});
-for(const file of ['calculadora/commercial.js','calculadora/app.js'])vm.runInContext(fs.readFileSync(path.join(base,file),'utf8'),context);
+for(const file of ['calculadora/commercial.js','calculadora/budgets.js','calculadora/app.js'])vm.runInContext(fs.readFileSync(path.join(base,file),'utf8'),context);
 const mount=window.document.getElementById('calculatorMount'),template=window.document.getElementById('calculatorTemplate');
 function content(){mount.replaceChildren(template.content.cloneNode(true));return mount.firstElementChild;}
 const external=window.document.createElement('input');external.id='quantity';external.value='777';window.document.body.prepend(external);

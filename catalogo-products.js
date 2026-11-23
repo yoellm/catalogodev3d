@@ -6,6 +6,15 @@
   function gallery(product){return [...new Set([product.imagen,...Object.values(product.imagenes||{})].map(imageUrl).filter(Boolean))].slice(0,6);}
   function colors(value){return [...new Set((Array.isArray(value)?value:String(value||'').split(',')).map(x=>String(x).trim()).filter(Boolean))];}
   function availability(product){return {disponible:'Disponible',bajo_pedido:'Bajo pedido',agotado:'Temporalmente agotado'}[product.estado]||'Disponible';}
+  function pricingWarnings(values){
+    const warnings=[],publicSet=String(values.precio??'').trim()!=='',tradeSet=String(values.mayorista??'').trim()!=='';
+    if(publicSet&&!tradeSet)warnings.push('Falta el precio mayorista por unidad para las tiendas.');
+    if(tradeSet&&!publicSet)warnings.push('Falta el precio público por unidad.');
+    if(publicSet&&tradeSet&&Number.isFinite(Number(values.precio))&&Number.isFinite(Number(values.mayorista))&&Number(values.mayorista)>Number(values.precio))warnings.push('El precio mayorista por unidad supera al precio público. Revisa si es lo que quieres ofrecer a las tiendas.');
+    if((publicSet||tradeSet)&&(!Number.isSafeInteger(Number(values.minimo))||Number(values.minimo)<1))warnings.push('Indica un pedido mínimo para tiendas: un entero de al menos 1 unidad por color.');
+    if(values.estado==='bajo_pedido'&&!String(values.plazo||'').trim())warnings.push('El producto es bajo pedido y todavía no tiene plazo orientativo para la tienda.');
+    return warnings;
+  }
   function wallapopUrl(value){
     try{const url=new URL(String(value||'').trim());return url.href.length<=2000&&url.protocol==='https:'&&!url.username&&!url.password&&!url.port&&(url.hostname==='wallapop.com'||url.hostname.endsWith('.wallapop.com'))?url.href:'';}catch{return '';}
   }
@@ -39,6 +48,6 @@
     const detail=typeof error?.message==='string' ? error.message : '';
     return 'No se ha podido guardar el producto. '+(detail ? detail+' ' : '')+(code ? 'Código: '+code+'. ' : '')+'Tus datos se mantienen en el formulario para que puedas reintentarlo.';
   }
-  scope.CATALOGO_PRODUCTS=Object.freeze({validate,errorMessage,wallapopUrl,imageUrl,gallery,colors,availability,reference});
-  if(typeof module!=='undefined')module.exports={validate,errorMessage,wallapopUrl,imageUrl,gallery,colors,availability,reference};
+  scope.CATALOGO_PRODUCTS=Object.freeze({validate,errorMessage,wallapopUrl,imageUrl,gallery,colors,availability,reference,pricingWarnings});
+  if(typeof module!=='undefined')module.exports=scope.CATALOGO_PRODUCTS;
 })(typeof window==='undefined'?globalThis:window);

@@ -17,7 +17,7 @@ const fixed=calc(costs,{...options,fixedPricing:'yes'});
 assert.equal(fixed.gross,calc({...costs,unitCost:1.08},{...options,fixedPricing:'yes'}).gross);
 let received;
 const calculatorSource=fs.readFileSync(path.join(root,'calculadora/app.js'),'utf8');
-const sender=calculatorSource.match(/function openProductDraftInInventory\(\) \{[\s\S]*?\n\}/)[0];
+const sender=calculatorSource.match(/function openProductDraftInInventory\([^)]*\) \{[\s\S]*?\n\}/)[0];
 const calculator={active:true,onDraft:data=>{received={data};return true;},state:{offer,lastCosts:costs},commercialOptions:()=>options,computeCommercialOffer:calc,$:()=>({value:'Llavero'}),showToast:()=>{}};
 vm.runInNewContext(sender+'; openProductDraftInInventory();',calculator);
 assert.equal(received.data.precio,2); assert.equal(received.data.mayorista,1.46); assert.equal(received.data.minimo,10);
@@ -45,6 +45,7 @@ calculator.commercialOptions=()=>options;calculator.state.lastCosts=costs;calcul
 vm.runInNewContext(sender+'; openProductDraftInInventory();',calculator);
 const nodes={};
 function node(id){return nodes[id] ||= {hidden:false,value:'',textContent:'',attrs:{},dataset:{},getAttribute(k){return this.attrs[k]??null;},set src(v){this.attrs.src=v;},removeAttribute(k){delete this.attrs[k];},replaceChildren(){},scrollIntoView(){},querySelector(){return {disabled:false};}};}
+node('pricingProductDialog').close=function(){this.open=false;};
 const form=node('productForm');
 node('productDialog').showModal=function(){this.open=true;};node('productDialog').close=function(){this.open=false;this.onclose?.();};
 form.elements=Object.fromEntries(['id','nombre','descripcion','categoria','imagen','precio','mayorista','minimo'].map(k=>[k,{value:''}]));

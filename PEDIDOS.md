@@ -31,3 +31,13 @@ Pruebas locales de permisos: iniciar el emulador de Realtime Database en 127.0.0
 El resultado principal muestra lo que cobra DEV3D Studio con IVA, por unidad y por pedido. La venta para tiendas presenta su tarifa mayorista y, en un bloque separado, el PVP de reventa y el margen de la tienda. El beneficio propio se muestra sin IVA. El desglose de costes y el detalle del IVA se abren solo cuando se necesitan. Se conservan las fórmulas y redondeos anteriores.
 
 Al preparar un producto desde la calculadora, precio siempre toma la tarifa de venta directa por unidad y mayorista toma la tarifa para tiendas por unidad, ambos con IVA. El modo de visualización, el total del lote y el PVP de reventa de la tienda no cambian estos campos. El mínimo se guarda solo en dev3dCatalogoMayorista y no afecta al precio público. tests/calculator-catalog-prices.cjs verifica el recorrido completo de calculadora, formulario y escritura de ambos registros.
+
+## Actualizar precios y guardar presupuestos
+
+En la calculadora, Actualizar precios de un producto abre un selector con buscador por nombre o referencia y una comparación de tarifas actuales y nuevas. Revisar actualización abre la ficha existente conservando nombre, descripción, referencia, fotos, colores, disponibilidad, plazo, personalización y Wallapop. Solo se sustituyen precio público unitario, mayorista unitario y mínimo para tiendas. Guardar producto confirma la actualización; no se crea un duplicado. Un producto eliminado no se recrea desde una ficha abierta.
+
+Mis presupuestos permite guardar con nombre, recuperar, actualizar, guardar una copia y eliminar cálculos. Los datos se conservan en dev3dPresupuestos/UID/ID y son privados para el administrador propietario. Se guardan los datos del cálculo y las tarifas, incluidos los dos beneficios independientes, IVA, materiales y auxiliares; no se suben los G-code ni 3MF. Al recuperar se utiliza la entrada manual con sus cantidades y tiempos guardados. Se admiten hasta 100 materiales y 100 auxiliares por cálculo; no hay un límite de número de presupuestos impuesto por la interfaz.
+
+El formulario muestra avisos al introducir precios mayoristas superiores al público, tarifas incompletas, mínimos inválidos y productos bajo pedido sin plazo. Las condiciones obligatorias siguen impidiendo guardar si faltan datos; los avisos de precios y plazo son orientativos.
+
+Pruebas: tests/pricing-tools.cjs cubre los flujos reales de presupuestos, actualización de productos y avisos. tests/budget-rules.cjs utiliza solo el emulador local para comprobar privacidad y esquema de presupuestos. Las reglas de inventario se conservan al añadir la nueva rama.
