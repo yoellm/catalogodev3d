@@ -49,3 +49,11 @@ Al crear o editar un producto, Cómo se aplica el mínimo permite elegir color o
 En producto se permite, por ejemplo, cumplir 5 unidades con 3 rojas y 2 azules del mismo producto. En color deben completarse 5 de cada color solicitado. El carrito vuelve a comprobar la condición cuando cambia la tarifa. Los pedidos guardan minimoTipo en sus grupos y mantienen su condición original aunque después se cambie el producto. Las reglas comprueban tarifa, condición vigente y suma del mismo producto en el pedido, sin mezclar productos diferentes. Los pedidos antiguos siguen mostrándose por color.
 
 Pruebas: tests/minimum-scope.cjs recorre alta, edición, duplicado, catálogo, carrito, cambios en directo, WhatsApp e historial. tests/order-rules.cjs comprueba ambos tipos de mínimo en el emulador y rechaza condiciones o cantidades manipuladas.
+
+## Perfiles orientativos de beneficio mayorista
+
+La calculadora ofrece los perfiles simple (20 %), pequeña personalizada (40 %), figura mediana (30 %), figura grande sencilla (25 %) y compleja o con muchos acabados (50 %), además de Manual. Son puntos de partida configurados para DEV3D, no tarifas estándar del sector ni beneficios garantizados. La personalización y los acabados deben introducirse también como costes de trabajo y materiales. Cambiar un perfil solo modifica wholesaleProfit; el beneficio de venta directa permanece independiente. Si la tarifa mayorista resultante supera el precio público se muestra un aviso.
+
+Editar el porcentaje cambia el selector a Manual. Se conserva el identificador del perfil en el guardado local y en el campo opcional calculo.wholesaleProfile de los presupuestos privados. Los presupuestos anteriores y los porcentajes que no coinciden con un perfil se recuperan como Manual conservando su valor. No se clasifican piezas automáticamente por tamaño o nombre.
+
+Referencia general para calcular costes de material, preparación, diseño y operación: https://blog.prusa3d.com/how-to-calculate-printing-costs_38650/. Los porcentajes de estos perfiles son editables y propios de esta configuración.

@@ -4,7 +4,7 @@ const {appDOM}=require('./helpers/app-dom.cjs');
  const app=await appDOM('admin.html'),window=app.window;
  Object.defineProperty(window.HTMLSelectElement.prototype,'selectedOptions',{configurable:true,get(){const options=[...this.querySelectorAll('option')],selected=options.filter(o=>o.hasAttribute('selected'));return selected.length?selected:options.slice(0,1);}});
  const context=vm.createContext({window,document:app.document,localStorage:{getItem:()=>null,setItem(){},removeItem(){}},navigator:{clipboard:{writeText:async()=>{}}},Intl,URL,console,structuredClone,setTimeout,clearTimeout,TextDecoder,TextEncoder,Uint8Array,DataView,Blob,Response,DecompressionStream,DOMParser:window.DOMParser});
- for(const file of ['calculadora/commercial.js','calculadora/budgets.js','calculadora/app.js'])vm.runInContext(fs.readFileSync(path.join(__dirname,'..',file),'utf8'),context);
+ for(const file of ['calculadora/commercial.js','calculadora/profit-profiles.js','calculadora/budgets.js','calculadora/app.js'])vm.runInContext(fs.readFileSync(path.join(__dirname,'..',file),'utf8'),context);
  await app.session({uid:'admin',email:'admin@example.test'});app.node('openCalculator').onclick();
  const root=app.node('calculatorMount'),get=id=>root.querySelector('#'+id);
  function set(id,value){const input=get(id);input.value=String(value);input.dispatchEvent(new window.Event('input',{bubbles:true}));}

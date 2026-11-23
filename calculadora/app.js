@@ -6,6 +6,7 @@
     // Todas las consultas quedan dentro de esta pantalla.
     const document={querySelector:selector=>root.querySelector(selector),getElementById:id=>root.querySelector('#'+id)};
     const computeCommercialOffer=scope.DEV3D_PRICING.computeCommercialOffer;
+    const profitProfiles=scope.DEV3D_PROFIT_PROFILES;
 function commercialOptions() {
   return Object.fromEntries(['saleChannel', 'fixedPricing', 'wholesaleProfit', 'shopMargin', 'targetPvp',
     'shopMinimum', 'rateName', 'referenceCost', 'costBuffer']
@@ -32,6 +33,9 @@ function commercialOfferLines() {
 
 function renderCommercialOffer() {
   const options = commercialOptions();
+  const profileId=profitProfiles.normalize($('#wholesaleProfile').value,options.wholesaleProfit);
+  $('#wholesaleProfile').value=profileId;
+  $('#wholesaleProfileHint').textContent=profitProfiles.profiles[profileId]?.help||'Escribe el porcentaje que quieras aplicar sobre tu coste. Tu beneficio es independiente del margen de reventa de la tienda.';
   const wholesaleRate=Number(options.wholesaleProfit),validRate=String(options.wholesaleProfit).trim()!==''&&Number.isFinite(wholesaleRate)&&wholesaleRate>=0;
   $('#wholesaleProfitExample').textContent=validRate?`Ejemplo con un coste de 10 € sin IVA: cobrarías ${euro.format(10*(1+wholesaleRate/100))} sin IVA y tu beneficio sería ${euro.format(10*wholesaleRate/100)}.`:'Introduce un porcentaje para ver el ejemplo.';
   const o = computeCommercialOffer(state.lastCosts, options);
@@ -54,7 +58,7 @@ function renderCommercialOffer() {
   $('#shopResaleMargin').textContent=`Margen de la tienda con este PVP: ${decimal.format(resaleMargin*100)}%`;
   const differentTarget=Number(options.targetPvp)>0&&Math.abs(o.pvp-o.suggestedPvp)>.005;
   $('#shopResaleTarget').hidden=!differentTarget;$('#shopResaleTarget').textContent=differentTarget?'Con tu PVP objetivo de '+euro.format(o.pvp)+' con IVA, el margen de la tienda sería '+decimal.format(o.actualMargin*100)+'%.':'';
-  for(const id of ['wholesaleProfit','shopMargin','targetPvp','shopMinimum'])document.getElementById(id).closest('label').hidden=!o.shop;
+  for(const id of ['wholesaleProfile','wholesaleProfit','shopMargin','targetPvp','shopMinimum'])document.getElementById(id).closest('label').hidden=!o.shop;
   document.getElementById('profitPercent').closest('label').hidden=o.shop;
   let status = o.errors.join(' ');
   if (o.valid) status = !o.compatible
@@ -62,8 +66,10 @@ function renderCommercialOffer() {
     : '';
   if (o.valid && o.overBuffer) status += ` Esta variante supera el colchón en ${euro.format(-o.bufferRemaining)} por unidad. El precio se mantiene; tu beneficio con el coste actual es ${euro.format(o.actualProfit)} sin IVA por unidad.${o.actualProfit < 0 ? ' Atención: esta variante se vendería con pérdidas.' : ''}`;
   if (o.valid && o.minimumApplied) status += ` El total usa el mínimo de ${o.quoteQuantity} unidades. El precio unitario no tiene descuento por cantidad.`;
+  const directOffer=computeCommercialOffer(state.lastCosts,{...options,saleChannel:'direct'}),abovePublic=o.shop&&o.valid&&directOffer.valid&&o.gross>directOffer.gross;
+  if(abovePublic)status+=` Tu tarifa mayorista de ${euro.format(o.gross)} por unidad supera tu precio público de ${euro.format(directOffer.gross)}. Revisa el beneficio de venta directa antes de preparar el producto.`;
   $('#offerStatus').textContent = status;
-  $('#offerStatus').classList.toggle('warning', !o.valid || !o.compatible || o.overBuffer);
+  $('#offerStatus').classList.toggle('warning', !o.valid || !o.compatible || o.overBuffer || abovePublic);
   $('#copyOffer').disabled = !o.valid;
   $('#copyOffer').textContent=o.shop?'Copiar oferta para la tienda':'Copiar oferta para el cliente';
   $('#inventoryButton').disabled = !o.valid;
@@ -100,6 +106,9 @@ const defaultMaterials = [
 const defaultAuxiliaryItems = [
   { id: "aux-1", name: "Pegamento", amount: 0.20 }
 ];
+const profileSelect=$('#wholesaleProfile');
+profileSelect.replaceChildren(...[['manual','Manual: escribir mi porcentaje'],...Object.entries(profitProfiles.profiles).map(([id,p])=>[id,p.label])].map(([id,label])=>{const option=root.ownerDocument.createElement('option');option.value=id;option.textContent=label;return option;}));
+profileSelect.value='simple';
 
 const defaults = Object.fromEntries(fieldIds.map((id) => [id, document.getElementById(id).value]));
 const state = {
@@ -499,7 +508,8 @@ function saveSettings() {
       values,
       materials: state.materials,
       auxiliaryItems: state.auxiliaryItems,
-      mode: state.mode
+      mode: state.mode,
+      wholesaleProfile:profitProfiles.normalize($('#wholesaleProfile').value,values.wholesaleProfit)
     }));
   } catch (_) {
     // La aplicación sigue funcionando si el almacenamiento local está bloqueado.
@@ -514,6 +524,7 @@ function loadSettings(snapshot) {
       if (saved.values[id] !== undefined) document.getElementById(id).value = saved.values[id];
     });
     if(String(saved.values.wholesaleProfit??'').trim()==='')$('#wholesaleProfit').value=defaults.wholesaleProfit;
+    $('#wholesaleProfile').value=profitProfiles.normalize(saved.wholesaleProfile,$('#wholesaleProfit').value);
     if (saved.defaultsVersion !== SETTINGS_DEFAULTS_VERSION && String(saved.values.maintenancePercent) === "8") {
       $("#maintenancePercent").value = defaults.maintenancePercent;
     }
@@ -1220,6 +1231,7 @@ function copySummary() {
 function resetAll() {
   if (!window.confirm("¿Quieres reiniciar todos los valores de la calculadora?")) return;
   fieldIds.forEach((id) => { document.getElementById(id).value = defaults[id]; });
+  $('#wholesaleProfile').value='simple';
   state.materials = structuredClone(defaultMaterials);
   state.auxiliaryItems = structuredClone(defaultAuxiliaryItems);
   localStorage.removeItem(STORAGE_KEY);
@@ -1252,6 +1264,7 @@ function bindMirror(primaryId, mirrorId) {
 
 fieldIds.forEach((id) => {
   document.getElementById(id).addEventListener("input", () => {
+    if(id==='wholesaleProfit')$('#wholesaleProfile').value='manual';
     if (state.gcode && ["filamentDiameter", "gcodeMaterialType"].includes(id) && state.gcode.gramEstimated) {
       state.gcode.grams = gramsFromLength(state.gcode.lengthMm);
       $("#detectedMaterial").textContent = `${decimal.format(state.gcode.grams)} g`;
@@ -1262,6 +1275,10 @@ fieldIds.forEach((id) => {
       calculate();
     }
   });
+});
+$('#wholesaleProfile').addEventListener('change',()=>{
+  const profile=profitProfiles.profiles[$('#wholesaleProfile').value];if(profile)$('#wholesaleProfit').value=String(profile.rate);
+  calculate();
 });
 
 $("#materialRows").addEventListener("input", (event) => {
@@ -1406,7 +1423,7 @@ updateAuxCustomField();
 switchMode(state.mode);
 const budgetView=scope.DEV3D_BUDGETS?.mount({root,api:budgets,isActive:()=>active,capture(){
   if(!state.offer?.valid)throw Error('Revisa los datos de la tarifa antes de guardar el presupuesto.');
-  return {defaultsVersion:SETTINGS_DEFAULTS_VERSION,values:Object.fromEntries(fieldIds.map(id=>[id,document.getElementById(id).value])),materials:state.materials,auxiliaryItems:state.auxiliaryItems};
+  return {defaultsVersion:SETTINGS_DEFAULTS_VERSION,values:Object.fromEntries(fieldIds.map(id=>[id,document.getElementById(id).value])),materials:state.materials,auxiliaryItems:state.auxiliaryItems,wholesaleProfile:profitProfiles.normalize($('#wholesaleProfile').value,$('#wholesaleProfit').value)};
 },restore(snapshot){
   analysisVersion++;state.gcode=null;loadSettings(snapshot);$('#gcodeInput').value='';$('#fileResult').classList.add('hidden');$('#dropzone').classList.remove('hidden');$('#gcodeTimeEditor').classList.add('hidden');
   linkMirroredValues();renderMaterialRows();renderAuxiliaryItems();updateAuxCustomField();switchMode('manual');

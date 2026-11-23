@@ -260,6 +260,9 @@
             "mode": {
               ".validate": "newData.val() == 'manual'"
             },
+            "wholesaleProfile": {
+              ".validate": "newData.val() == 'manual' || newData.val() == 'simple' || newData.val() == 'personalized' || newData.val() == 'figure' || newData.val() == 'large' || newData.val() == 'complex'"
+            },
             "values": {
               ".validate": "newData.hasChildren([\"pieceName\",\"printerName\",\"quantity\",\"printDays\",\"printHours\",\"printMinutes\",\"printSeconds\",\"filamentDiameter\",\"gcodeMaterialType\",\"gcodeBrand\",\"gcodeMaterialPrice\",\"gcodeErrorFactor\",\"printerPowerKw\",\"electricityPrice\",\"operatorCount\",\"laborHours\",\"laborMinutes\",\"laborSeconds\",\"laborRate\",\"maintenancePercent\",\"profitPercent\",\"vatPercent\",\"partnerMarkupPercent\",\"saleChannel\",\"fixedPricing\",\"wholesaleProfit\",\"shopMargin\",\"targetPvp\",\"shopMinimum\",\"rateName\",\"referenceCost\",\"costBuffer\"])",
               "pieceName": {
