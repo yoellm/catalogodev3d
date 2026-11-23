@@ -18,7 +18,7 @@ assert.equal(fixed.gross,calc({...costs,unitCost:1.08},{...options,fixedPricing:
 let received;
 const calculatorSource=fs.readFileSync(path.join(root,'calculadora/app.js'),'utf8');
 const sender=calculatorSource.match(/function openProductDraftInInventory\([^)]*\) \{[\s\S]*?\n\}/)[0];
-const calculator={active:true,onDraft:data=>{received={data};return true;},state:{offer,lastCosts:costs},commercialOptions:()=>options,computeCommercialOffer:calc,$:()=>({value:'Llavero'}),showToast:()=>{}};
+const calculator={active:true,linkedProduct:null,captureCalculation:()=>undefined,onDraft:data=>{received={data};return true;},state:{offer,lastCosts:costs},commercialOptions:()=>options,computeCommercialOffer:calc,$:()=>({value:'Llavero'}),showToast:()=>{}};
 vm.runInNewContext(sender+'; openProductDraftInInventory();',calculator);
 assert.equal(received.data.precio,2); assert.equal(received.data.mayorista,1.46); assert.equal(received.data.minimo,10);
 assert(validateDraft(received.data));

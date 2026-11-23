@@ -20,7 +20,7 @@ async function appDOM(page,media,search='',commerce=false,storage){
  window.CATALOGO_ORDER_DRAFT=require('../../catalogo-order-draft.js');
  if(storage)window.localStorage=storage;
  window.CATALOGO_ORDERS=require('../../catalogo-orders.js');window.CATALOGO_HISTORY=require('../../catalogo-history.js');
- database.serverTimestamp=()=>({'.sv':'timestamp'});database.get=async(name)=>({val:()=>state.writes.findLast(w=>w.name===name)?.value||null});
+ database.serverTimestamp=()=>({'.sv':'timestamp'});database.get=async(name)=>state.get?state.get(name):({val:()=>state.writes.findLast(w=>w.name===name)?.value||null});
  if(commerce)window.CATALOGO_COMMERCE=require('../../catalogo-commerce.js');
  if(page==='admin.html'||page==='tienda.html')window.CATALOGO_HISTORY_UI=require('../../catalogo-history-ui.js');
  const navigator={onLine:true};

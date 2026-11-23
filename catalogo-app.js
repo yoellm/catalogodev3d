@@ -11,7 +11,7 @@
   let subscriptions = [], tradeStop = null, productHashHandled = false, calculatorInstance = null, productSaving = false, uploadedPhoto = null;
   let adminProductPage = 1;
   let historyView=null,submitOrder=null,historyStop=null;
-  let pricingDraft=null,budgetAPI=null;
+  let pricingDraft=null,budgetAPI=null,pendingCalculation=null,recalculateRequest=0;
   const uploadedGallery=new Map();
   let categoryFromLink=catalogPage?new URL('https://www.dev3dstudio.es/catalogo.html'+(location.search||'')).searchParams.get('categoria'):null;
   function renderCategoryNavigation(){
@@ -93,6 +93,7 @@
   }
   function fillProductEditor(id){
     const p=publicProducts[id];if(!p)return false;const f=$('productForm');f.reset();uploadedPhoto=null;uploadedGallery.clear();$('productMessage').textContent='';
+    pendingCalculation=null;
     for(const key of ['nombre','descripcion','categoria','imagen','precio','wallapop','plazo','referencia'])f.elements[key].value=p[key]??'';
     f.elements.estado.value=p.estado||'disponible';f.elements.colores.value=Object.values(p.colores||{}).join(', ');f.elements.personalizable.value=String(p.personalizable!==false);f.elements.galeria.value=window.CATALOGO_PRODUCTS.gallery(p).filter(url=>url!==safeUrl(p.imagen)).join('\n');
     f.elements.referencia.value=window.CATALOGO_PRODUCTS.reference(p,id);f.elements.id.value=id;f.elements.mayorista.value=wholesale[id]?.precio??'';f.elements.minimo.value=wholesale[id]?.minimo??1;f.elements.minimoTipo.value=window.CATALOGO_PRODUCTS.minimumType(wholesale[id]);
@@ -123,11 +124,12 @@
         const sameProduct=draft.productId&&form.elements.id.value===draft.productId;
         if (!sameProduct&&(form.elements.id.value || form.elements.nombre.value.trim()) && !confirm('Hay un producto en edición. ¿Sustituir el formulario por el producto elegido de la calculadora?')) return false;
         if(draft.productId){if(!sameProduct)fillProductEditor(draft.productId);for(const key of ['precio','mayorista','minimo'])form.elements[key].value=draft[key];}
-        else{form.reset();form.elements.id.value='';for(const [key,value] of Object.entries(draft))form.elements[key].value=value;uploadedPhoto=null;uploadedGallery.clear();}
+        else{form.reset();form.elements.id.value='';for(const key of ['nombre','descripcion','precio','mayorista','minimo'])form.elements[key].value=draft[key];uploadedPhoto=null;uploadedGallery.clear();}
+        pendingCalculation=draft.calculo||null;
         $('formTitle').textContent = draft.productId?'Actualizar precios del producto':'Nuevo producto desde la calculadora';
         showAdminView('catalog');
         refreshPricingWarnings();showProductEditor(true);
-        $('productMessage').textContent='Los dos precios son por 1 unidad, con IVA incluido. El pedido mínimo se aplica solo a tiendas, según la condición elegida.';
+        $('productMessage').textContent='Los dos precios son por 1 unidad, con IVA incluido. El pedido mínimo se aplica solo a tiendas, según la condición elegida.'+(pendingCalculation?' Al guardar, también se vinculará este cálculo para poder recuperarlo con «Recalcular».':'');
         $('productMessage').dataset.kind='info';
         status('Precios por unidad preparados. Añade la foto y la categoría, revisa los datos y pulsa Guardar producto para publicarlo.');
         form.scrollIntoView({behavior:'smooth'});
@@ -357,12 +359,29 @@
         const url=safeUrl(p.imagen);if(url){const photo=el('img');photo.src=url;photo.alt='';photo.loading='lazy';info.append(photo);}
         name.append(el('strong',p.nombre),el('small','Ref. '+window.CATALOGO_PRODUCTS.reference(p,id),'product-reference'),el('small',p.categoria||'Sin categoría'));info.append(name);product.append(info);row.append(product);
         for(const [label,value] of [['Precio público',money(p.precio)],['Mayorista / ud.',wholesale[id]?money(wholesale[id].precio):'Sin configurar'],['Mínimo mayorista',wholesale[id]?.minimo?wholesale[id].minimo+' uds. '+window.CATALOGO_PRODUCTS.minimumLabel(wholesale[id]):'—']]){const cell=el('td',value);cell.dataset.label=label;row.append(cell);}
-        const actions=el('td'),buttons=el('div',undefined,'product-row-actions'),edit=el('button','Editar','secondary'),duplicate=el('button','Duplicar','secondary'),remove=el('button','Eliminar','danger-button');
+        const actions=el('td'),buttons=el('div',undefined,'product-row-actions'),edit=el('button','Editar','secondary'),recalculate=el('button','Recalcular','secondary'),duplicate=el('button','Duplicar','secondary'),remove=el('button','Eliminar','danger-button');
         edit.setAttribute('aria-label','Editar '+p.nombre);remove.setAttribute('aria-label','Eliminar '+p.nombre);
         edit.onclick=()=>{if(!productSaving)fillProductEditor(id);};
+        recalculate.setAttribute('aria-label','Recalcular '+p.nombre);
+        recalculate.onclick=async()=>{
+          if(!admin||productSaving)return;
+          const request=++recalculateRequest,version=generation;recalculate.disabled=true;
+          $('catalogListMessage').textContent='Recuperando el presupuesto del producto…';$('catalogListMessage').dataset.kind='info';
+          try{
+            const record=(await database.get(path('dev3dProductoPresupuestos/'+id))).val();
+            if(request!==recalculateRequest||version!==generation||!admin)return;
+            if(!publicProducts[id])throw Error('El producto ya no está en el catálogo.');
+            const calculo=record?window.DEV3D_BUDGETS.prepare(record.calculo):null;
+            showAdminView('calculator');
+            if(!calculatorInstance?.loadProductBudget({id,name:publicProducts[id].nombre,calculo,minimo:wholesale[id]?.minimo}))throw Error('No se pudo abrir la calculadora. Recarga la página.');
+            status(calculo?'Presupuesto recuperado. Ajusta el cálculo y pulsa «Revisar precios de este producto». El catálogo solo cambia al guardar la ficha.':'Este producto todavía no tiene presupuesto. Introduce sus costes y revisa sus precios para guardar el primer cálculo vinculado.');
+            $('catalogListMessage').textContent='';
+          }catch(error){if(request===recalculateRequest&&version===generation){$('catalogListMessage').textContent='No se pudo recuperar el presupuesto. '+(error.code?'Comprueba la conexión y tus permisos.':error.message);$('catalogListMessage').dataset.kind='error';status($('catalogListMessage').textContent);}}
+          finally{recalculate.disabled=false;}
+        };
         duplicate.setAttribute('aria-label','Duplicar '+p.nombre);duplicate.onclick=()=>{if(productSaving)return;edit.onclick();const f=$('productForm');f.elements.id.value='';f.elements.nombre.value=String(p.nombre).slice(0,142)+' (copia)';f.elements.wallapop.value='';f.elements.referencia.value='';$('formTitle').textContent='Duplicar producto';$('productMessage').textContent='Revisa los datos y guarda para publicar la copia. El producto original se conserva.';};
-        remove.onclick=async()=>{if(!admin||!confirm('¿Eliminar «'+p.nombre+'» del catálogo?'))return;remove.disabled=true;try{await database.update(path(''),{['dev3dCatalogoPublico/'+id]:null,['dev3dCatalogoMayorista/'+id]:null});$('catalogListMessage').textContent='Producto eliminado.';$('catalogListMessage').dataset.kind='success';}catch{$('catalogListMessage').textContent='No se pudo eliminar el producto. Comprueba la conexión y tus permisos.';$('catalogListMessage').dataset.kind='error';}finally{remove.disabled=false;}};
-        name.append(el('small',window.CATALOGO_PRODUCTS.availability(p)+(p.plazo?' · '+p.plazo:'')));buttons.append(edit,duplicate,remove);actions.append(buttons);row.append(actions);body.append(row);
+        remove.onclick=async()=>{if(!admin||!confirm('¿Eliminar «'+p.nombre+'» del catálogo?'))return;remove.disabled=true;try{await database.update(path(''),{['dev3dCatalogoPublico/'+id]:null,['dev3dCatalogoMayorista/'+id]:null,['dev3dProductoPresupuestos/'+id]:null});$('catalogListMessage').textContent='Producto eliminado.';$('catalogListMessage').dataset.kind='success';}catch{$('catalogListMessage').textContent='No se pudo eliminar el producto. Comprueba la conexión y tus permisos.';$('catalogListMessage').dataset.kind='error';}finally{remove.disabled=false;}};
+        name.append(el('small',window.CATALOGO_PRODUCTS.availability(p)+(p.plazo?' · '+p.plazo:'')));buttons.append(edit,recalculate,duplicate,remove);actions.append(buttons);row.append(actions);body.append(row);
       });
       if(entries.length)$('adminProducts').append(table);else $('adminProducts').append(el('p',Object.keys(publicProducts).length?'No hay productos que coincidan. Prueba otra búsqueda o categoría.':'Todavía no hay productos. Pulsa «Nuevo producto» para crear el primero.','empty-list'));
       $('shops').replaceChildren();
@@ -433,8 +452,8 @@
       $('closeProductDialog').onclick=()=>{if(!productSaving)showProductEditor(false);};
       $('productDialog').oncancel=event=>{if(productSaving)event.preventDefault();};
       $('productDialog').onclose=()=>{$('productForm').hidden=true;document.body.classList?.remove('product-modal-open');};
-      $('resetProduct').onclick = () => { if(productSaving)return;$('productForm').reset(); $('formTitle').textContent = 'Nuevo producto'; uploadedPhoto=null;uploadedGallery.clear(); productFeedback('');showProductEditor(false); };
-      $('newProduct').onclick=()=>{if(productSaving)return;$('productForm').reset();uploadedPhoto=null;uploadedGallery.clear();$('formTitle').textContent='Nuevo producto';productFeedback('');refreshPricingWarnings();$('catalogListMessage').textContent='';showProductEditor(true);$('productForm').elements.nombre.focus();};
+      $('resetProduct').onclick = () => { if(productSaving)return;$('productForm').reset();pendingCalculation=null; $('formTitle').textContent = 'Nuevo producto'; uploadedPhoto=null;uploadedGallery.clear(); productFeedback('');showProductEditor(false); };
+      $('newProduct').onclick=()=>{if(productSaving)return;$('productForm').reset();pendingCalculation=null;uploadedPhoto=null;uploadedGallery.clear();$('formTitle').textContent='Nuevo producto';productFeedback('');refreshPricingWarnings();$('catalogListMessage').textContent='';showProductEditor(true);$('productForm').elements.nombre.focus();};
       for(const id of ['adminProductSearch','adminProductCategory','adminProductSort'])$(id).oninput=()=>{adminProductPage=1;renderAdmin();};
       $('adminProductPrev').onclick=()=>{if(adminProductPage>1){adminProductPage--;renderAdmin();}};
       $('adminProductNext').onclick=()=>{adminProductPage++;renderAdmin();};
@@ -449,6 +468,7 @@
         catch(error){productFeedback(error.message,'error');fields[error.field]?.focus();return;}
         if(typeof navigator!=='undefined'&&navigator.onLine===false){productFeedback('No hay conexión. Conéctate a internet antes de guardar el producto.','error');return;}
         productSaving=true;const button=$('saveProduct');button.disabled=true;button.textContent='Guardando…';$('resetProduct').disabled=true;f.setAttribute('aria-busy','true');productFeedback('Guardando el producto…');
+        const calculation=pendingCalculation;
         const waiting=setTimeout(()=>productFeedback('El guardado está tardando. Comprueba la conexión; Firebase todavía no ha confirmado el producto.'),8000);
         try{
           const id=fields.id.value||database.push(path('dev3dCatalogoPublico')).key;
@@ -480,9 +500,12 @@
           }
           if(image&&!window.CATALOGO_PRODUCTS.imageUrl(image))throw Object.assign(new Error('La URL de la imagen debe comenzar por https:// o http://.'),{code:'product/image-url'});
           const imagenes=[...new Set([image,...galleryUrls].filter(Boolean))];image=image||imagenes[0]||'';
-          await database.update(path(''),{['dev3dCatalogoPublico/'+id]:{nombre:values.nombre,descripcion:values.descripcion,categoria:values.categoria,imagen:image,precio:values.precio,wallapop:values.wallapop,imagenes,colores:values.colores,estado:values.estado,plazo:values.plazo,personalizable:values.personalizable,referencia},['dev3dCatalogoMayorista/'+id]:{precio:values.mayorista,minimo:values.minimo,minimoTipo:values.minimoTipo}});
+          const updates={['dev3dCatalogoPublico/'+id]:{nombre:values.nombre,descripcion:values.descripcion,categoria:values.categoria,imagen:image,precio:values.precio,wallapop:values.wallapop,imagenes,colores:values.colores,estado:values.estado,plazo:values.plazo,personalizable:values.personalizable,referencia},['dev3dCatalogoMayorista/'+id]:{precio:values.mayorista,minimo:values.minimo,minimoTipo:values.minimoTipo}};
+          if(calculation)updates['dev3dProductoPresupuestos/'+id]={nombre:values.nombre.slice(0,100),calculo:calculation,actualizado:database.serverTimestamp()};
+          await database.update(path(''),updates);
+          pendingCalculation=null;
           uploadedGallery.clear();
-          f.reset();uploadedPhoto=null;$('formTitle').textContent='Nuevo producto';productFeedback('Producto guardado. Ya está publicado en el catálogo.'+(photoSummary?' '+photoSummary:''),'success');
+          f.reset();uploadedPhoto=null;$('formTitle').textContent='Nuevo producto';productFeedback('Producto guardado. Ya está publicado en el catálogo.'+(calculation?' Presupuesto vinculado: podrás recuperarlo con «Recalcular».':'')+(photoSummary?' '+photoSummary:''),'success');
           $('catalogListMessage').textContent=$('productMessage').textContent;$('catalogListMessage').dataset.kind='success';showProductEditor(false);
         }catch(error){productFeedback(window.CATALOGO_PRODUCTS.errorMessage(error),'error');}
         finally{clearTimeout(waiting);productSaving=false;button.disabled=false;button.textContent='Guardar producto';$('resetProduct').disabled=false;f.removeAttribute('aria-busy');}
@@ -514,7 +537,7 @@
     }
     authentication.onAuthStateChanged(auth, async user => {
       const version = ++generation;
-      if(adminPage){pricingDraft=null;$('pricingProductDialog').close();if(currentUser?.uid!==user?.uid&&calculatorInstance){calculatorInstance.destroy();calculatorInstance=null;$('calculatorMount').replaceChildren();}}
+      if(adminPage){pricingDraft=null;pendingCalculation=null;recalculateRequest++;$('pricingProductDialog').close();if(currentUser?.uid!==user?.uid&&calculatorInstance){calculatorInstance.destroy();calculatorInstance=null;$('calculatorMount').replaceChildren();}}
       if(currentUser?.uid&&currentUser.uid!==user?.uid)window.CATALOGO_ORDER_DRAFT?.create(orderStorage()).remove(currentUser.uid);
       resetSubscriptions(); currentUser = user; currentShopProfile = null; wholesale = {}; publicProducts = {}; shops = {};
       historyView?.reset();

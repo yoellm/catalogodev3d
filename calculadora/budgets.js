@@ -39,7 +39,7 @@
     $('saveBudget').onclick=()=>save(false);$('saveBudgetCopy').onclick=()=>save(true);$('budgetSearch').oninput=render;controls();
     const stop=api?.watch(data=>{if(!alive||!isActive())return;records=data||{};if(selected&&!records[selected]){selected=null;$('saveBudget').textContent='Guardar presupuesto';}render();},()=>{if(alive){records={};render();message('No se pudieron cargar tus presupuestos. Revisa la conexión o vuelve a iniciar sesión.');}});
     if(!api)message('Los presupuestos guardados están disponibles al abrir la calculadora desde administración.');
-    return {destroy(){alive=false;stop?.();records={};$('budgetList').replaceChildren();$('budgetName').value='';message('');}};
+    return {clearSelection(){selected=null;$('budgetName').value='';$('saveBudget').textContent='Guardar presupuesto';message('');},destroy(){alive=false;stop?.();records={};$('budgetList').replaceChildren();$('budgetName').value='';message('');}};
   }
   scope.DEV3D_BUDGETS={fields,prepare,mount};if(typeof module!=='undefined')module.exports=scope.DEV3D_BUDGETS;
 })(typeof window==='undefined'?globalThis:window);

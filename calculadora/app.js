@@ -1,6 +1,7 @@
 (function(scope){
   'use strict';
   function mount(root,{onDraft,onUpdatePrices,budgets}={}){
+  let linkedProduct=null;
     if (!root || typeof root.querySelector !== 'function') throw new Error('No se encuentra la pantalla de la calculadora.');
     let active=true,analysisVersion=0;
     // Todas las consultas quedan dentro de esta pantalla.
@@ -162,7 +163,9 @@ function openProductDraftInInventory(mode) {
     minimo: Number(options.shopMinimum),
     descripcion: options.fixedPricing === 'yes' ? 'Precio cerrado para las personalizaciones de este producto.' : ''
   };
-  const receiver=mode==='update'?onUpdatePrices:onDraft;
+  try{data.calculo=captureCalculation();}catch(error){return showToast(error.message);}
+  if(mode==='update'&&linkedProduct)data.productId=linkedProduct.id;
+  const receiver=mode==='update'&&!linkedProduct?onUpdatePrices:onDraft;
   if (typeof receiver !== 'function') return showToast('No se pudo preparar el producto. Vuelve al panel y abre la calculadora de nuevo.');
   const accepted = receiver(data);
   if (accepted === false) return;
@@ -1240,8 +1243,9 @@ function copySummary() {
     .catch(() => showToast("No se pudo copiar el resumen"));
 }
 
-function resetAll() {
-  if (!window.confirm("¿Quieres reiniciar todos los valores de la calculadora?")) return;
+function resetAll(options={}) {
+  if (options.confirm!==false&&!window.confirm("¿Quieres reiniciar todos los valores de la calculadora?")) return;
+  setProductContext(null);budgetView?.clearSelection();
   fieldIds.forEach((id) => { document.getElementById(id).value = defaults[id]; });
   $('#wholesaleProfile').value='profit20';
   $('#purchaseVatMode').value='auto';$('#purchaseVatPercent').value='21';
@@ -1438,15 +1442,32 @@ renderMaterialRows();
 renderAuxiliaryItems();
 updateAuxCustomField();
 switchMode(state.mode);
-const budgetView=scope.DEV3D_BUDGETS?.mount({root,api:budgets,isActive:()=>active,capture(){
+function captureCalculation(){
   if(!state.offer?.valid)throw Error('Revisa los datos de la tarifa antes de guardar el presupuesto.');
-  return {defaultsVersion:SETTINGS_DEFAULTS_VERSION,values:Object.fromEntries(fieldIds.map(id=>[id,document.getElementById(id).value])),materials:state.materials,auxiliaryItems:state.auxiliaryItems,wholesaleProfile:profitProfiles.normalize($('#wholesaleProfile').value,$('#wholesaleProfit').value),materialTax:materialTaxConfig()};
-},restore(snapshot){
+  return scope.DEV3D_BUDGETS.prepare({defaultsVersion:SETTINGS_DEFAULTS_VERSION,values:Object.fromEntries(fieldIds.map(id=>[id,document.getElementById(id).value])),materials:state.materials,auxiliaryItems:state.auxiliaryItems,wholesaleProfile:profitProfiles.normalize($('#wholesaleProfile').value,$('#wholesaleProfit').value),materialTax:materialTaxConfig()});
+}
+function setProductContext(product){
+  linkedProduct=product;
+  $('#linkedProductPanel').hidden=!product;
+  $('#linkedProductName').textContent=product?.name||'';
+  $('#linkedProductHelp').textContent=product?.fresh?'Este producto todavía no tiene un cálculo guardado. Introduce sus materiales, tiempos y ajustes para vincularlo.':'Se han recuperado los materiales, tiempos y ajustes del último cálculo guardado con este producto.';
+  $('#updateCatalogButton').textContent=product?'Revisar precios de este producto':'Actualizar precios de un producto';
+}
+function restoreCalculation(snapshot){
+  setProductContext(null);
   analysisVersion++;state.gcode=null;loadSettings(snapshot);$('#gcodeInput').value='';$('#fileResult').classList.add('hidden');$('#dropzone').classList.remove('hidden');$('#gcodeTimeEditor').classList.add('hidden');
   linkMirroredValues();renderMaterialRows();renderAuxiliaryItems();updateAuxCustomField();switchMode('manual');
-}});
+}
+const budgetView=scope.DEV3D_BUDGETS?.mount({root,api:budgets,isActive:()=>active,capture:captureCalculation,restore:restoreCalculation});
+$('#unlinkProductCalculation').onclick=()=>setProductContext(null);
 
-    return {destroy(){active=false;analysisVersion++;budgetView?.destroy();clearTimeout(state.toastTimer);}};
+    return {loadProductBudget({id,name,calculo,minimo}){
+      if(!active)return false;
+      if(calculo)restoreCalculation(scope.DEV3D_BUDGETS.prepare(calculo));
+      else{resetAll({confirm:false});$('#pieceName').value=name;$('#shopMinimum').value=String(minimo||1);linkMirroredValues();calculate();}
+      budgetView?.clearSelection();
+      setProductContext({id,name,fresh:!calculo});return true;
+    },destroy(){active=false;analysisVersion++;budgetView?.destroy();clearTimeout(state.toastTimer);}};
   }
   scope.DEV3D_CALCULATOR=Object.freeze({mount});
 })(window);

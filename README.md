@@ -120,3 +120,9 @@ Las reglas permiten al propietario actualizar exclusivamente el campo email de s
 ## Respuesta al guardar productos
 
 El formulario indica los campos obligatorios y muestra validación, progreso y resultado junto al botón de guardar. Evita envíos duplicados y conserva los datos si Firebase devuelve un error. Los productos sin fotografía se guardan sin utilizar Storage. Si falta el precio mayorista, PVP, nombre o mínimo, el formulario indica el campo.
+
+### Presupuesto vinculado al producto
+
+Al crear o actualizar un producto desde la calculadora, el guardado de su ficha publica los precios y guarda el cálculo en una única operación. La copia incluye materiales, tiempos, mano de obra, consumibles y ajustes de beneficios/IVA; no incluye los archivos G-code o 3MF. Se conserva en `dev3dProductoPresupuestos/ID_PRODUCTO`, separada del catálogo público y mayorista y accesible solo por administradores. Los presupuestos personales de `dev3dPresupuestos/UID` mantienen sus permisos individuales.
+
+En gestión del catálogo, «Recalcular» recupera esa copia y prepara la actualización del mismo producto. Revisar los precios no los publica: hay que guardar la ficha. Editar únicamente la información del producto conserva su cálculo. Eliminar el producto elimina también su copia; duplicar la ficha no copia el presupuesto. Para productos anteriores sin copia se abre un cálculo nuevo, claramente identificado, que quedará vinculado al guardar los precios. Recuperar un presupuesto personal o reiniciar la calculadora abandona el producto de la sesión sin borrar su copia guardada.

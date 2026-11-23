@@ -18,5 +18,21 @@ async function allowed(p){const r=await p;assert(r.ok,await r.text());}async fun
  const tax=structuredClone(record);tax.calculo.materialTax={mode:'keep',rate:21};await allowed(request('PUT','dev3dPresupuestos/a/tax',tax,a));tax.calculo.materialTax.rate=-1;await denied(request('PUT','dev3dPresupuestos/a/invalidTax',tax,a));tax.calculo.materialTax={mode:'unknown',rate:21};await denied(request('PUT','dev3dPresupuestos/a/invalidTaxMode',tax,a));
  const large=structuredClone(record);large.calculo.materials=Array.from({length:100},()=>record.calculo.materials[0]);large.calculo.auxiliaryItems=Array.from({length:100},()=>({name:'Auxiliar',amount:.5}));await allowed(request('PUT','dev3dPresupuestos/a/large',large,a));
  await allowed(request('PUT','dev3dPresupuestos/a/p1',{...record,nombre:'Actualizado'},a));await allowed(request('DELETE','dev3dPresupuestos/a/p1',undefined,a));
+ // A linked calculation is private to administrators and saved atomically with
+ // its product; personal budgets above remain restricted to their owner.
+ const productUpdates={'dev3dCatalogoPublico/linked':{nombre:'Pieza vinculada',precio:10},'dev3dCatalogoMayorista/linked':{precio:6,minimo:5,minimoTipo:'producto'},'dev3dProductoPresupuestos/linked':record};
+ await allowed(request('PATCH','',productUpdates,a));
+ await allowed(request('GET','dev3dProductoPresupuestos/linked',undefined,a));await allowed(request('GET','dev3dProductoPresupuestos/linked',undefined,other));
+ await allowed(request('PUT','dev3dTiendas/shop',{nombre:'Tienda de prueba',rol:'tienda',activo:true,email:'tienda@example.test'},'owner'));
+ for(const identity of [undefined,shop]){await denied(request('GET','dev3dProductoPresupuestos/linked',undefined,identity));await denied(request('GET','dev3dProductoPresupuestos',undefined,identity));await denied(request('PUT','dev3dProductoPresupuestos/linked',record,identity));await denied(request('DELETE','dev3dProductoPresupuestos/linked',undefined,identity));}
+ await denied(request('PUT','dev3dProductoPresupuestos/missing',record,a));
+ const invalidLinked=structuredClone(record);invalidLinked.calculo.values.secret='not allowed';await denied(request('PUT','dev3dProductoPresupuestos/linked',invalidLinked,a));
+ await denied(request('PATCH','',{'dev3dCatalogoPublico/linked/precio':11,'dev3dProductoPresupuestos/linked':invalidLinked},a));
+ const unchanged=await request('GET','dev3dCatalogoPublico/linked/precio');assert.equal(await unchanged.json(),10);
+ await denied(request('PUT','dev3dCatalogoPublico/leaked',{nombre:'Pieza',precio:10,calculo},a));
+ await allowed(request('PUT','dev3dProductoPresupuestos/linked',{...record,nombre:'Recalculado'},other));
+ await allowed(request('PATCH','',{'dev3dCatalogoPublico/linked':null,'dev3dCatalogoMayorista/linked':null,'dev3dProductoPresupuestos/linked':null},a));
+ const deleted=await request('GET','dev3dProductoPresupuestos/linked',undefined,a);assert.equal(await deleted.json(),null);
  console.log('PASS: emulator budget rules: only owning admin can read/save/delete, no store/public/other-admin access, bounded snapshots, server timestamps and no uploaded files.');
+ console.log('PASS: emulator product-budget rules: catalogue admins only, active stores denied, product existence, atomic create/update/delete and rejection of leaked or invalid calculations.');
 })().catch(error=>{console.error(error);process.exitCode=1;});
