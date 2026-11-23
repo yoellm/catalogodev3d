@@ -315,10 +315,10 @@ function renderMaterialRows() {
             <input data-field="factor" type="number" value="${material.factor}" min="1" step="0.01">
           </label>
           <label class="field material-field-price">
-            <span>Precio por kg</span>
-            <div class="price-vat-control">
+            <span class="material-price-label">${materialAmounts(material).deduct?'Precio por kg':'Precio de compra por kg'}</span>
+            <div class="price-vat-control ${materialAmounts(material).deduct?'':'single-price'}">
               <input data-field="price" type="number" value="${material.price}" min="0" step="0.01">
-              <select data-field="priceVat" aria-label="IVA del precio de ${escapeHtml(material.name)}">
+              <select data-field="priceVat" aria-label="IVA del precio de ${escapeHtml(material.name)}" ${materialAmounts(material).deduct?'':'hidden'}>
                 <option value="net" ${material.priceVat !== "gross" ? "selected" : ""}>Sin IVA</option>
                 <option value="gross" ${material.priceVat === "gross" ? "selected" : ""}>Con IVA</option>
               </select>
@@ -340,6 +340,10 @@ function updateMaterialCalculatedDisplays() {
     const netResult = row.querySelector("[data-material-net]");
     const grossResult = row.querySelector("[data-material-gross]");
     const hint = row.querySelector(".net-price-hint");
+    const showTaxBasis=materialAmounts(material).deduct;
+    row.querySelector('[data-field="priceVat"]').hidden=!showTaxBasis;
+    row.querySelector('.price-vat-control').classList.toggle('single-price',!showTaxBasis);
+    row.querySelector('.material-price-label').textContent=showTaxBasis?'Precio por kg':'Precio de compra por kg';
     if (netResult) netResult.textContent = euro.format(netTotal);
     if (grossResult) grossResult.textContent = euro.format(grossTotal);
     if (hint) hint.textContent = materialPriceHint(material);
@@ -422,6 +426,7 @@ function renderResults() {
   $("#materialTotalPreview").textContent = euro.format(c.material);
   $("#materialGrossTotalPreview").textContent = euro.format(c.materialGross);
   const tax=materialTaxConfig(),deduct=materialTax.amounts({price:0},tax,value('vatPercent')).deduct;
+  $('#purchaseVatPercent').closest('label').hidden=!deduct;
   $('#materialTaxHint').textContent=deduct?`Se descuenta el ${decimal.format(tax.rate)} % de IVA de compra a los filamentos marcados «Con IVA». Los marcados «Sin IVA» se usan directamente.`:'Se usa el precio de cada filamento tal como lo introduces, sin descontar IVA de compra.';
   $("#materialGrossHint").textContent=deduct?`Referencia de compra con IVA del ${decimal.format(tax.rate)} %`:'Importes introducidos, sin conversiones de IVA';
   $("#electricityDurationPreview").textContent = formatDuration(c.hours * 3600);
