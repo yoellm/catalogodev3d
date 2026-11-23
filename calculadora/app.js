@@ -7,6 +7,7 @@
     const document={querySelector:selector=>root.querySelector(selector),getElementById:id=>root.querySelector('#'+id)};
     const computeCommercialOffer=scope.DEV3D_PRICING.computeCommercialOffer;
     const profitProfiles=scope.DEV3D_PROFIT_PROFILES;
+    const materialTax=scope.DEV3D_MATERIAL_TAX;
 function commercialOptions() {
   return Object.fromEntries(['saleChannel', 'fixedPricing', 'wholesaleProfit', 'shopMargin', 'targetPvp',
     'shopMinimum', 'rateName', 'referenceCost', 'costBuffer']
@@ -37,16 +38,17 @@ function renderCommercialOffer() {
   $('#wholesaleProfile').value=profileId;
   $('#wholesaleProfileHint').textContent=profitProfiles.profiles[profileId]?.help||'Escribe el porcentaje que quieras aplicar sobre tu coste. Tu beneficio es independiente del margen de reventa de la tienda.';
   const wholesaleRate=Number(options.wholesaleProfit),validRate=String(options.wholesaleProfit).trim()!==''&&Number.isFinite(wholesaleRate)&&wholesaleRate>=0;
-  $('#wholesaleProfitExample').textContent=validRate?`Ejemplo con un coste de 10 € sin IVA: cobrarías ${euro.format(10*(1+wholesaleRate/100))} sin IVA y tu beneficio sería ${euro.format(10*wholesaleRate/100)}.`:'Introduce un porcentaje para ver el ejemplo.';
+  $('#wholesaleProfitExample').textContent=validRate?`Ejemplo con 10 € de coste total: cobrarías ${euro.format(10*(1+wholesaleRate/100))} antes del IVA de venta y tu beneficio sería ${euro.format(10*wholesaleRate/100)}.`:'Introduce un porcentaje para ver el ejemplo.';
   const o = computeCommercialOffer(state.lastCosts, options);
   state.offer = o;
   $('#fixedFields').classList.toggle('hidden', !o.fixed);
   $('#offerTitle').textContent = `${o.shop ? 'Lo que tú cobras a la tienda' : 'Lo que tú cobras al cliente'}${o.fixed ? ' · precio fijo' : ''}`;
   $('#offerPriceHighlight').classList.toggle('hidden', !o.valid);
-  $('#offerPriceLabel').textContent = o.shop ? 'Tu tarifa mayorista · IVA incluido' : 'Tu precio de venta · IVA incluido';
+  const saleTaxNote=state.lastCosts.vatRate===0?'IVA de venta: 0 %':'IVA incluido';
+  $('#offerPriceLabel').textContent = (o.shop?'Tu tarifa mayorista · ':'Tu precio de venta · ')+saleTaxNote;
   $('#offerPriceAmount').textContent = o.valid ? euro.format(o.gross) : '';
-  $('#offerPriceTotal').textContent = o.valid ? `Total por ${o.quoteQuantity} unidades: ${euro.format(o.total)} · IVA incluido` : '';
-  const rows = [['Coste de fabricación / ud. sin IVA', euro.format(state.lastCosts.unitCost)],['Tu beneficio / ud. sin IVA', euro.format(o.actualProfit)]];
+  $('#offerPriceTotal').textContent = o.valid ? `Total por ${o.quoteQuantity} unidades: ${euro.format(o.total)} · ${saleTaxNote}` : '';
+  const rows = [['Coste total / unidad', euro.format(state.lastCosts.unitCost)],['Tu beneficio / ud. sin IVA', euro.format(o.actualProfit)]];
   if(o.shop)rows.push(['Mínimo para tiendas',options.shopMinimum+' unidades']);
   $('#offerResults').innerHTML = o.valid ? rows.map(([label, amount]) => `<div class="cost-line"><span>${escapeHtml(label)}</span><strong>${escapeHtml(amount)}</strong></div>`).join('') : '';
   const technical=[['Tu tarifa / ud. sin IVA',euro.format(o.net)],[`IVA por unidad (${decimal.format(state.lastCosts.vatRate*100)}%)`,euro.format(o.gross-o.net)]];
@@ -99,7 +101,7 @@ const defaultMaterials = [
     unit: "kg",
     factor: 1.05,
     price: 19,
-    priceVat: "net"
+    priceVat: "gross"
   }
 ];
 
@@ -108,7 +110,7 @@ const defaultAuxiliaryItems = [
 ];
 const profileSelect=$('#wholesaleProfile');
 profileSelect.replaceChildren(...[['manual','Manual: escribir mi porcentaje'],...Object.entries(profitProfiles.profiles).map(([id,p])=>[id,p.label])].map(([id,label])=>{const option=root.ownerDocument.createElement('option');option.value=id;option.textContent=label;return option;}));
-profileSelect.value='simple';
+profileSelect.value='profit20';
 
 const defaults = Object.fromEntries(fieldIds.map((id) => [id, document.getElementById(id).value]));
 const state = {
@@ -196,16 +198,18 @@ function createMaterial(overrides = {}) {
     unit: "kg",
     factor: 1.05,
     price: 19,
-    priceVat: "net",
+    priceVat: "gross",
     ...overrides
   };
 }
 
-function getNetMaterialPrice(material) {
-  const enteredPrice = Math.max(0, safeNumber(material.price));
-  if (material.priceVat !== "gross") return enteredPrice;
-  const vatRate = Math.max(0, value("vatPercent")) / 100;
-  return enteredPrice / (1 + vatRate);
+function materialTaxConfig(){return materialTax.normalize({mode:$('#purchaseVatMode').value,rate:$('#purchaseVatPercent').value});}
+function materialAmounts(material){return materialTax.amounts(material,materialTaxConfig(),value('vatPercent'));}
+function getNetMaterialPrice(material) {return materialAmounts(material).cost;}
+function materialPriceHint(material){
+  const amount=materialAmounts(material);
+  if(!amount.deduct)return `Coste usado: ${euro.format(amount.cost)}/kg. Se mantiene el importe introducido.`;
+  return amount.removed?`Coste sin IVA de compra: ${euro.format(amount.cost)}/kg (descontado ${decimal.format(amount.rate)} %).`:`Coste usado: ${euro.format(amount.cost)}/kg. El precio ya está indicado sin IVA.`;
 }
 
 function createAuxiliaryItem(name, amount) {
@@ -248,7 +252,7 @@ function renderMaterialRows() {
   container.innerHTML = state.materials.map((material, index) => {
     const netPrice = getNetMaterialPrice(material);
     const netTotal = safeNumber(material.kg) * safeNumber(material.factor, 1) * netPrice;
-    const grossTotal = netTotal * (1 + Math.max(0, value("vatPercent")) / 100);
+    const grossTotal = safeNumber(material.kg) * safeNumber(material.factor,1) * materialAmounts(material).reference;
     const unit = material.unit === "g" ? "g" : "kg";
     const displayedWeight = unit === "g"
       ? Number((safeNumber(material.kg) * 1000).toFixed(3))
@@ -266,11 +270,11 @@ function renderMaterialRows() {
           <div class="material-row-actions">
             <div class="material-result">
               <div class="material-result-line">
-                <span>SIN IVA · CÁLCULO</span>
+                <span>COSTE UTILIZADO</span>
                 <strong data-material-net>${euro.format(netTotal)}</strong>
               </div>
               <div class="material-result-line">
-                <span>CON IVA · SLICER</span>
+                <span>REFERENCIA DE COMPRA</span>
                 <strong data-material-gross>${euro.format(grossTotal)}</strong>
               </div>
             </div>
@@ -319,7 +323,7 @@ function renderMaterialRows() {
                 <option value="gross" ${material.priceVat === "gross" ? "selected" : ""}>Con IVA</option>
               </select>
             </div>
-            <small class="net-price-hint">${material.priceVat === "gross" ? `Neto: ${euro.format(netPrice)}/kg` : "Precio neto"}</small>
+            <small class="net-price-hint">${materialPriceHint(material)}</small>
           </label>
         </div>
       </article>`;
@@ -332,13 +336,13 @@ function updateMaterialCalculatedDisplays() {
     if (!row) return;
     const netPrice = getNetMaterialPrice(material);
     const netTotal = safeNumber(material.kg) * safeNumber(material.factor, 1) * netPrice;
-    const grossTotal = netTotal * (1 + Math.max(0, value("vatPercent")) / 100);
+    const grossTotal = safeNumber(material.kg)*safeNumber(material.factor,1)*materialAmounts(material).reference;
     const netResult = row.querySelector("[data-material-net]");
     const grossResult = row.querySelector("[data-material-gross]");
     const hint = row.querySelector(".net-price-hint");
     if (netResult) netResult.textContent = euro.format(netTotal);
     if (grossResult) grossResult.textContent = euro.format(grossTotal);
-    if (hint) hint.textContent = material.priceVat === "gross" ? `Neto: ${euro.format(netPrice)}/kg` : "Precio neto";
+    if (hint) hint.textContent = materialPriceHint(material);
   });
 }
 
@@ -370,7 +374,7 @@ function calculate() {
   const material = state.materials.reduce((sum, item) => {
     return sum + Math.max(0, safeNumber(item.kg)) * Math.max(1, safeNumber(item.factor, 1)) * getNetMaterialPrice(item);
   }, 0);
-  const materialGross = material * (1 + vatRate);
+  const materialGross = state.materials.reduce((sum,item)=>sum+Math.max(0,safeNumber(item.kg))*Math.max(1,safeNumber(item.factor,1))*materialAmounts(item).reference,0);
   const totalKg = state.materials.reduce((sum, item) => sum + Math.max(0, safeNumber(item.kg)), 0);
   const electricity = hours * Math.max(0, value("printerPowerKw")) * Math.max(0, value("electricityPrice"));
   const laborTimeHours = Math.max(0, getLaborHours());
@@ -417,7 +421,9 @@ function renderResults() {
   updateMaterialCalculatedDisplays();
   $("#materialTotalPreview").textContent = euro.format(c.material);
   $("#materialGrossTotalPreview").textContent = euro.format(c.materialGross);
-  $("#materialGrossHint").textContent = `Referencia para el slicer · IVA ${decimal.format(c.vatRate * 100)}%`;
+  const tax=materialTaxConfig(),deduct=materialTax.amounts({price:0},tax,value('vatPercent')).deduct;
+  $('#materialTaxHint').textContent=deduct?`Se descuenta el ${decimal.format(tax.rate)} % de IVA de compra a los filamentos marcados «Con IVA». Los marcados «Sin IVA» se usan directamente.`:'Se usa el precio de cada filamento tal como lo introduces, sin descontar IVA de compra.';
+  $("#materialGrossHint").textContent=deduct?`Referencia de compra con IVA del ${decimal.format(tax.rate)} %`:'Importes introducidos, sin conversiones de IVA';
   $("#electricityDurationPreview").textContent = formatDuration(c.hours * 3600);
   $("#electricityKwhPreview").textContent = `${decimal.format(c.hours * value("printerPowerKw"))} kWh`;
   $("#electricityTotalPreview").textContent = euro.format(c.electricity);
@@ -473,7 +479,7 @@ function renderResults() {
         <span>${part.label} / ud.</span>
         <strong>${euro.format(part.value)}</strong>
       </div>`),
-    `<div class="cost-line total"><span>Coste de fabricación / ud. sin IVA</span><strong>${euro.format(c.unitCost)}</strong></div>`
+    `<div class="cost-line total"><span>Coste total / unidad</span><strong>${euro.format(c.unitCost)}</strong></div>`
   ].join("");
 
   const biggest = parts.reduce((max, part) => part.value > max.value ? part : max, parts[0]);
@@ -509,7 +515,8 @@ function saveSettings() {
       materials: state.materials,
       auxiliaryItems: state.auxiliaryItems,
       mode: state.mode,
-      wholesaleProfile:profitProfiles.normalize($('#wholesaleProfile').value,values.wholesaleProfit)
+      wholesaleProfile:profitProfiles.normalize($('#wholesaleProfile').value,values.wholesaleProfit),
+      materialTax:materialTaxConfig()
     }));
   } catch (_) {
     // La aplicación sigue funcionando si el almacenamiento local está bloqueado.
@@ -525,6 +532,7 @@ function loadSettings(snapshot) {
     });
     if(String(saved.values.wholesaleProfit??'').trim()==='')$('#wholesaleProfit').value=defaults.wholesaleProfit;
     $('#wholesaleProfile').value=profitProfiles.normalize(saved.wholesaleProfile,$('#wholesaleProfit').value);
+    const tax=materialTax.normalize(saved.materialTax||materialTax.legacy(saved.values.vatPercent));$('#purchaseVatMode').value=tax.mode;$('#purchaseVatPercent').value=String(tax.rate);
     if (saved.defaultsVersion !== SETTINGS_DEFAULTS_VERSION && String(saved.values.maintenancePercent) === "8") {
       $("#maintenancePercent").value = defaults.maintenancePercent;
     }
@@ -539,7 +547,7 @@ function loadSettings(snapshot) {
       setLaborTimeInputs(getLaborHours() * 3600);
     }
     if (Array.isArray(saved.materials)) {
-      state.materials = saved.materials.map((material) => createMaterial(material));
+      state.materials = saved.materials.map((material) => createMaterial({...material,priceVat:material.priceVat==='gross'?'gross':'net'}));
     }
     if (Array.isArray(saved.auxiliaryItems)) {
       state.auxiliaryItems = saved.auxiliaryItems.map((item) => createAuxiliaryItem(item.name, item.amount));
@@ -818,8 +826,9 @@ function gramsFromLength(lengthMm) {
   return Math.PI * (diameter / 2) ** 2 * lengthMm / 1000 * density;
 }
 
-function syncGcodeMaterial() {
+function syncGcodeMaterial(preserveTaxBasis=true) {
   if (!state.gcode) return;
+  const taxBasis=new Map(preserveTaxBasis?state.materials.map(material=>[material.id,material.priceVat]):[]);
   const selected = $("#gcodeMaterialType").selectedOptions[0];
   const fallbackName = selected?.dataset.material || "Filamento G-code";
   const fallbackBrand = $("#gcodeBrand").value.trim();
@@ -838,7 +847,7 @@ function syncGcodeMaterial() {
       unit: "g",
       factor,
       price: filament.price > 0 ? filament.price : fallbackPrice,
-      priceVat: "gross",
+      priceVat: taxBasis.get(`gcode-filament-${filament.index ?? index}`)||'gross',
       color: filament.color || ""
     }));
   } else {
@@ -850,7 +859,7 @@ function syncGcodeMaterial() {
       unit: "g",
       factor,
       price: fallbackPrice,
-      priceVat: "gross"
+      priceVat: taxBasis.get('gcode-filament-0')||'gross'
     })];
   }
   renderMaterialRows();
@@ -1135,7 +1144,7 @@ async function analyzeFile(file) {
     $("#pieceName").value = baseName;
     $("#gcodePieceName").value = baseName;
     setTimeInputs(seconds);
-    syncGcodeMaterial();
+    syncGcodeMaterial(false);
     // Each successfully loaded file becomes the new cost reference.
     $("#referenceCost").value = (Math.ceil(state.lastCosts.unitCost * 100) / 100).toFixed(2);
     calculate();
@@ -1198,9 +1207,7 @@ function copySummary() {
     const unit = material.unit === "g" ? "g" : "kg";
     const displayedWeight = unit === "g" ? safeNumber(material.kg) * 1000 : safeNumber(material.kg);
     const colorDetail = normalizeHexColor(material.color);
-    const priceDetail = material.priceVat === "gross"
-      ? `${euro.format(material.price)}/kg con IVA → ${euro.format(netPrice)}/kg sin IVA`
-      : `${euro.format(netPrice)}/kg sin IVA`;
+    const amount=materialAmounts(material),priceDetail=`${euro.format(material.price)}/kg ${material.priceVat==='gross'?'con IVA de compra':'sin IVA de compra'} → ${euro.format(netPrice)}/kg usado`+(amount.removed?` (descontado ${decimal.format(amount.rate)} %)`:'');
     return `  - ${material.name || "Material"} ${material.brand ? `(${material.brand})` : ""}${colorDetail ? ` [${colorDetail}]` : ""}: ${precise.format(displayedWeight)} ${unit} × ${material.factor} × ${priceDetail} = ${euro.format(total)}`;
   });
   const lines = [
@@ -1211,15 +1218,15 @@ function copySummary() {
     "",
     "MATERIALES",
     ...materialLines,
-    `Total material sin IVA: ${euro.format(c.material)}`,
-    `Total material con IVA (referencia slicer): ${euro.format(c.materialGross)}`,
+    `Coste de material utilizado: ${euro.format(c.material)}`,
+    `Referencia de compra de material: ${euro.format(c.materialGross)}`,
     `Electricidad: ${euro.format(c.electricity)}`,
     `Operarios: ${value("operatorCount")} × ${formatDuration(c.laborTimeHours * 3600)} × ${euro.format(value("laborRate"))}/h = ${euro.format(c.labor)}`,
     `Materiales auxiliares: ${euro.format(c.auxiliaries)}`,
     `Mantenimiento (${decimal.format(c.maintenanceRate * 100)}%): ${euro.format(c.maintenance)}`,
     "",
-    `Coste de fabricación del lote sin IVA: ${euro.format(c.costBase)}`,
-    `Coste de fabricación por unidad sin IVA: ${euro.format(c.unitCost)}`,
+    `Coste total del lote: ${euro.format(c.costBase)}`,
+    `Coste total por unidad: ${euro.format(c.unitCost)}`,
     `Tu beneficio por unidad sin IVA: ${euro.format(state.offer.actualProfit)}`
   ];
   lines.push("", "TARIFA COMERCIAL", ...commercialOfferLines(), $("#offerStatus").textContent);
@@ -1231,7 +1238,8 @@ function copySummary() {
 function resetAll() {
   if (!window.confirm("¿Quieres reiniciar todos los valores de la calculadora?")) return;
   fieldIds.forEach((id) => { document.getElementById(id).value = defaults[id]; });
-  $('#wholesaleProfile').value='simple';
+  $('#wholesaleProfile').value='profit20';
+  $('#purchaseVatMode').value='auto';$('#purchaseVatPercent').value='21';
   state.materials = structuredClone(defaultMaterials);
   state.auxiliaryItems = structuredClone(defaultAuxiliaryItems);
   localStorage.removeItem(STORAGE_KEY);
@@ -1281,13 +1289,14 @@ $('#wholesaleProfile').addEventListener('change',()=>{
   calculate();
 });
 
-$("#materialRows").addEventListener("input", (event) => {
+function handleMaterialInput(event) {
   const input = event.target.closest("[data-field]");
   if (!input) return;
   const row = input.closest("[data-material-id]");
   const material = state.materials.find((item) => item.id === row.dataset.materialId);
   if (!material) return;
   const field = input.dataset.field;
+  if(input.tagName==='SELECT'&&material[field]===input.value)return;
   if (field === "weight") {
     material.kg = safeNumber(input.value) * (material.unit === "g" ? 0.001 : 1);
   } else if (field === "unit") {
@@ -1303,7 +1312,10 @@ $("#materialRows").addEventListener("input", (event) => {
     if (subtitle) subtitle.innerHTML = materialSubtitleHtml(material);
   }
   calculate();
-});
+}
+$('#materialRows').addEventListener('input',handleMaterialInput);
+$('#materialRows').addEventListener('change',event=>{if(event.target.closest('select[data-field]'))handleMaterialInput(event);});
+$('#purchaseVatMode').addEventListener('change',calculate);$('#purchaseVatPercent').addEventListener('input',calculate);
 
 $("#materialRows").addEventListener("click", (event) => {
   const button = event.target.closest("[data-remove-material]");
@@ -1423,7 +1435,7 @@ updateAuxCustomField();
 switchMode(state.mode);
 const budgetView=scope.DEV3D_BUDGETS?.mount({root,api:budgets,isActive:()=>active,capture(){
   if(!state.offer?.valid)throw Error('Revisa los datos de la tarifa antes de guardar el presupuesto.');
-  return {defaultsVersion:SETTINGS_DEFAULTS_VERSION,values:Object.fromEntries(fieldIds.map(id=>[id,document.getElementById(id).value])),materials:state.materials,auxiliaryItems:state.auxiliaryItems,wholesaleProfile:profitProfiles.normalize($('#wholesaleProfile').value,$('#wholesaleProfit').value)};
+  return {defaultsVersion:SETTINGS_DEFAULTS_VERSION,values:Object.fromEntries(fieldIds.map(id=>[id,document.getElementById(id).value])),materials:state.materials,auxiliaryItems:state.auxiliaryItems,wholesaleProfile:profitProfiles.normalize($('#wholesaleProfile').value,$('#wholesaleProfit').value),materialTax:materialTaxConfig()};
 },restore(snapshot){
   analysisVersion++;state.gcode=null;loadSettings(snapshot);$('#gcodeInput').value='';$('#fileResult').classList.add('hidden');$('#dropzone').classList.remove('hidden');$('#gcodeTimeEditor').classList.add('hidden');
   linkMirroredValues();renderMaterialRows();renderAuxiliaryItems();updateAuxCustomField();switchMode('manual');

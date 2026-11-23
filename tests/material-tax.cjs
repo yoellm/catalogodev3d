@@ -1,0 +1,10 @@
+const assert=require('node:assert/strict'),tax=require('../calculadora/material-tax.js'),profiles=require('../calculadora/profit-profiles.js'),budgets=require('../calculadora/budgets.js');
+const gross={price:24.2,priceVat:'gross'},net={price:20,priceVat:'net'};
+for(const basis of ['gross','net'])assert.equal(tax.amounts({price:24.2,priceVat:basis},{mode:'auto',rate:21},0).cost,24.2);
+assert.equal(tax.amounts(gross,{mode:'auto',rate:21},21).cost,20);assert.equal(tax.amounts(gross,{mode:'auto',rate:21},10).cost,20);assert.equal(tax.amounts(net,{mode:'auto',rate:21},10).cost,20);
+assert.equal(tax.amounts(gross,{mode:'keep',rate:21},21).cost,24.2);assert.equal(tax.amounts(gross,{mode:'deduct',rate:21},0).cost,20);assert(Math.abs(tax.amounts(gross,{mode:'deduct',rate:10},21).cost-22)<1e-9);
+assert.equal(tax.amounts(net,{mode:'deduct',rate:21},21).reference,24.2);assert.equal(tax.amounts(gross,{mode:'keep',rate:21},0).reference,24.2);
+assert.equal(tax.amounts(gross,{mode:'deduct',rate:0},21).cost,24.2);assert.deepEqual(tax.legacy(0),{mode:'auto',rate:21});assert.deepEqual(tax.legacy(10),{mode:'auto',rate:10});
+const old={defaultsVersion:5,values:Object.fromEntries(budgets.fields.map(key=>[key,'0'])),materials:[],auxiliaryItems:[],wholesaleProfile:'personalized'};old.values.wholesaleProfit='40';old.values.vatPercent='10';const restored=budgets.prepare(old);assert.equal(restored.values.wholesaleProfit,'40');assert.equal(restored.wholesaleProfile,'manual');assert.deepEqual(restored.materialTax,{mode:'auto',rate:10});
+for(const rate of [20,25,30,40,50]){assert.equal(profiles.profiles['profit'+rate].rate,rate);assert.equal(profiles.normalize('profit'+rate,rate),'profit'+rate);}assert.equal(profiles.normalize('personalized',40),'manual');assert.equal(profiles.normalize('profit25',37),'manual');
+console.log('PASS: gross purchase amounts retained with 0% sale VAT, separate purchase/sale rates, explicit overrides, net inputs, legacy quotes and independent profit levels.');

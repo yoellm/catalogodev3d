@@ -2,6 +2,7 @@
   'use strict';
   const fields=['pieceName','printerName','quantity','printDays','printHours','printMinutes','printSeconds','filamentDiameter','gcodeMaterialType','gcodeBrand','gcodeMaterialPrice','gcodeErrorFactor','printerPowerKw','electricityPrice','operatorCount','laborHours','laborMinutes','laborSeconds','laborRate','maintenancePercent','profitPercent','vatPercent','partnerMarkupPercent','saleChannel','fixedPricing','wholesaleProfit','shopMargin','targetPvp','shopMinimum','rateName','referenceCost','costBuffer'];
   const profitProfiles=typeof module!=='undefined'?require('./profit-profiles.js'):scope.DEV3D_PROFIT_PROFILES;
+  const materialTax=typeof module!=='undefined'?require('./material-tax.js'):scope.DEV3D_MATERIAL_TAX;
   const numberFields=['nozzle','layer','kg','factor','price'];
   const text=(value,max)=>{if(typeof value!=='string'||value.length>max)throw Error('Hay un texto demasiado largo o datos de presupuesto no válidos.');return value;};
   const number=value=>{if(typeof value!=='number'||!Number.isFinite(value)||value<0)throw Error('Revisa los importes y cantidades del presupuesto.');return value;};
@@ -12,7 +13,7 @@
     const values=Object.fromEntries(fields.map(key=>[key,text(data.values[key],200)]));
     const materials=materialList.map(m=>({name:text(m.name||'',150),brand:text(m.brand||'',150),...Object.fromEntries(numberFields.map(key=>[key,number(m[key])])),unit:m.unit==='g'?'g':'kg',priceVat:m.priceVat==='gross'?'gross':'net',color:/^#[0-9a-f]{6}$/i.test(m.color||'')?m.color:''}));
     const auxiliaryItems=auxiliaryList.map(a=>({name:text(a.name||'',150),amount:number(a.amount)}));
-    return {version:1,defaultsVersion:number(data.defaultsVersion),values,materials,auxiliaryItems,mode:'manual',wholesaleProfile:profitProfiles.normalize(data.wholesaleProfile,values.wholesaleProfit)};
+    return {version:1,defaultsVersion:number(data.defaultsVersion),values,materials,auxiliaryItems,mode:'manual',wholesaleProfile:profitProfiles.normalize(data.wholesaleProfile,values.wholesaleProfit),materialTax:materialTax.normalize(data.materialTax||materialTax.legacy(values.vatPercent))};
   }
   function mount({root,api,capture,restore,isActive=()=>true}){
     const $=id=>root.querySelector('#'+id),el=(tag,text)=>{const n=root.ownerDocument.createElement(tag);if(text!==undefined)n.textContent=text;return n;};
