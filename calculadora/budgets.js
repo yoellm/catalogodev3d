@@ -40,14 +40,14 @@
     const stop=api?.watch(data=>{if(!alive||!isActive())return;records=data||{};if(selected&&!records[selected]){selected=null;$('saveBudget').textContent='Guardar presupuesto';}render();},()=>{if(alive){records={};render();message('No se pudieron cargar tus presupuestos. Revisa la conexión o vuelve a iniciar sesión.');}});
     if(!api)message('Los presupuestos guardados están disponibles al abrir la calculadora desde administración.');
     return {async saveForProduct(name,calculo){
-      if(!alive||!isActive()||busy||!api)throw Error('Espera a que termine el guardado del presupuesto e int?ntalo de nuevo.');
+      if(!alive||!isActive()||busy||!api)throw Error('Espera a que termine el guardado del presupuesto e int\u00e9ntalo de nuevo.');
       const calculation=prepare(calculo);
-      busy=true;controls();render();message('Guardando presupuesto?');
+      busy=true;controls();render();message('Guardando presupuesto\u2026');
       try{
         // A new product gets its own budget without overwriting a recovered one.
         const id=await api.save({id:null,name:name.trim().slice(0,100),calculo:calculation});
         if(!alive||!isActive())throw Error('La calculadora se ha cerrado.');
-        selected=id;$('budgetName').value=name.trim().slice(0,100);$('saveBudget').textContent='Guardar cambios';message('Presupuesto guardado. Se vincular? al producto al guardar su ficha.');
+        selected=id;$('budgetName').value=name.trim().slice(0,100);$('saveBudget').textContent='Guardar cambios';message('Presupuesto guardado. Se vincular\u00e1 al producto al guardar su ficha.');
         return id;
       }catch(error){message('No se pudo completar el guardado. Tus datos siguen en la calculadora.');throw error;}
       finally{busy=false;if(alive){controls();render();}}

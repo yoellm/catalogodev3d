@@ -140,7 +140,28 @@ function safeNumber(number, fallback = 0) {
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
-let preparingProduct = false;
+let preparingProduct = false, dismissBudgetPrompt = null;
+function askToSaveProductBudget() {
+  const dialog = $('#saveProductBudgetDialog');
+  return new Promise(resolve => {
+    let finished = false;
+    const finish = choice => {
+      if (finished) return;
+      finished = true;
+      dismissBudgetPrompt = null;
+      dialog.close();
+      resolve(choice);
+    };
+    dismissBudgetPrompt = () => finish(null);
+    $('#saveProductBudgetYes').onclick = () => finish(true);
+    $('#saveProductBudgetNo').onclick = () => finish(false);
+    $('#saveProductBudgetCancel').onclick = () => finish(null);
+    dialog.oncancel = event => { event.preventDefault(); finish(null); };
+    dialog.onclose = () => finish(null);
+    dialog.showModal();
+    $('#saveProductBudgetYes').focus();
+  });
+}
 async function openProductDraftInInventory(mode) {
   if (preparingProduct) return;
   if (!state.offer?.valid) return showToast("Revisa los avisos de la tarifa comercial");
@@ -164,13 +185,15 @@ async function openProductDraftInInventory(mode) {
   if(mode==='update'&&linkedProduct)data.productId=linkedProduct.id;
   const receiver=mode==='update'&&!linkedProduct?onUpdatePrices:onDraft;
   if (typeof receiver !== 'function') return showToast('No se pudo preparar el producto. Vuelve al panel y abre la calculadora de nuevo.');
-  if(mode!=='update' && budgets && scope.confirm?.('?Quieres guardar el presupuesto antes de crear el producto? Se guardar? con el nombre de la pieza y quedar? asociado al producto cuando guardes su ficha.')) {
+  if(mode!=='update' && budgets) {
     preparingProduct = true;
     $('#inventoryButton').disabled = true;
     try {
-      await budgetView.saveForProduct(data.nombre, data.calculo);
+      const saveBudget = await askToSaveProductBudget();
+      if (!active || saveBudget === null) return;
+      if (saveBudget) await budgetView.saveForProduct(data.nombre, data.calculo);
     } catch (error) {
-      showToast('No se pudo guardar el presupuesto. Revisa la conexi?n e int?ntalo de nuevo.');
+      showToast('No se pudo guardar el presupuesto. Revisa la conexi\u00f3n e int\u00e9ntalo de nuevo.');
       return;
     } finally {
       preparingProduct = false;
@@ -1478,7 +1501,7 @@ $('#unlinkProductCalculation').onclick=()=>setProductContext(null);
       else{resetAll({confirm:false});$('#pieceName').value=name;$('#shopMinimum').value=String(minimo||1);linkMirroredValues();calculate();}
       budgetView?.clearSelection();
       setProductContext({id,name,fresh:!calculo});return true;
-    },destroy(){active=false;analysisVersion++;budgetView?.destroy();clearTimeout(state.toastTimer);}};
+    },destroy(){active=false;dismissBudgetPrompt?.();analysisVersion++;budgetView?.destroy();clearTimeout(state.toastTimer);}};
   }
   scope.DEV3D_CALCULATOR=Object.freeze({mount});
 })(window);

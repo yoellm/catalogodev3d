@@ -3,13 +3,16 @@ const {appDOM}=require('./helpers/app-dom.cjs');
 const {prepare}=require('../calculadora/budgets.js');
 (async()=>{
   const app=await appDOM('admin.html'),window=app.window;
-  let questions=0;window.confirm=()=>{questions++;return app.state.confirm;};
+  window.confirm=()=>{throw Error('Native confirmation must not be used');};
   const settle=()=>new Promise(resolve=>setTimeout(resolve,0));
   Object.defineProperty(window.HTMLSelectElement.prototype,'selectedOptions',{configurable:true,get(){const options=[...this.querySelectorAll('option')];return options.filter(o=>o.hasAttribute('selected')).length?options.filter(o=>o.hasAttribute('selected')):options.slice(0,1);}});
   const context=vm.createContext({window,document:app.document,localStorage:{getItem:()=>null,setItem(){},removeItem(){}},navigator:{clipboard:{writeText:async()=>{}}},Intl,URL,console,structuredClone,setTimeout,clearTimeout,TextDecoder,TextEncoder,Uint8Array,DataView,Blob,Response,DecompressionStream,DOMParser:window.DOMParser});
   for(const file of ['commercial','profit-profiles','material-tax','budgets','app'])vm.runInContext(fs.readFileSync(path.join(__dirname,'../calculadora',file+'.js'),'utf8'),context);
   await app.session({uid:'admin',email:'admin@example.test'});app.node('openCalculator').onclick();
   const root=app.node('calculatorMount'),get=id=>root.querySelector('#'+id);
+  const prompt=get('saveProductBudgetDialog');let questions=0;
+  prompt.showModal=function(){questions++;this.open=true;};prompt.close=function(){this.open=false;this.onclose?.();};
+  const choose=id=>get(id).onclick();
   const set=(id,value)=>{get(id).value=String(value);get(id).dispatchEvent(new window.Event('input',{bubbles:true}));};
   const field=(name,value)=>{const input=root.querySelector('[data-field="'+name+'"]');input.value=String(value);input.dispatchEvent(new window.Event('input',{bubbles:true}));};
   const action=(name)=>[...app.node('adminProducts').querySelectorAll('button')].find(b=>b.textContent===name);
@@ -17,13 +20,16 @@ const {prepare}=require('../calculadora/budgets.js');
   field('name','PLA especial');field('brand','Mi marca');field('weight',.25);field('price',24.2);field('factor',1.12);field('priceVat','gross');
   get('purchaseVatMode').value='deduct';get('purchaseVatPercent').value='21';get('purchaseVatMode').dispatchEvent(new window.Event('change',{bubbles:true}));
   const aux=root.querySelector('.aux-item input');aux.value='2.3';aux.dispatchEvent(new window.Event('input',{bubbles:true}));
+  get('inventoryButton').click();assert.equal(prompt.open,true);choose('saveProductBudgetCancel');await settle();
+  assert(!app.node('productDialog').open);assert.equal(app.state.writes.length,0);
+  get('inventoryButton').click();let prevented=false;prompt.oncancel({preventDefault(){prevented=true;}});await settle();assert(prevented);assert(!prompt.open);assert(!app.node('productDialog').open);
   // Saving errors keep the calculation open, and declining still allows creation.
-  app.state.set=async()=>{throw Error('offline');};get('inventoryButton').click();await settle();
+  app.state.set=async()=>{throw Error('offline');};get('inventoryButton').click();choose('saveProductBudgetYes');await settle();
   assert(!app.node('productDialog').open);assert.equal(get('pieceName').value,'Figura personalizada');assert.equal(get('inventoryButton').disabled,false);
-  app.state.set=null;app.state.confirm=false;get('inventoryButton').click();
+  app.state.set=null;get('inventoryButton').click();choose('saveProductBudgetNo');await settle();
   assert.equal(app.node('productDialog').open,true);assert.equal(app.state.writes.length,0);app.node('productDialog').close();
-  app.state.confirm=true;get('inventoryButton').click();get('inventoryButton').click();await settle();
-  const form=app.node('productForm');assert.equal(app.node('productDialog').open,true);assert.equal(questions,3);assert.equal(app.state.writes.length,1);
+  get('inventoryButton').click();get('inventoryButton').click();choose('saveProductBudgetYes');await settle();
+  const form=app.node('productForm');assert.equal(app.node('productDialog').open,true);assert.equal(questions,5);assert.equal(app.state.writes.length,1);
   const savedBudget=app.state.writes[0];assert.equal(savedBudget.name,'dev3dPresupuestos/admin/test-product');assert.equal(savedBudget.value.nombre,'Figura personalizada');
 
   assert.match(app.node('productMessage').textContent,/vinculará/);

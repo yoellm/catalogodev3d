@@ -1285,3 +1285,13 @@ body[data-admin-view="calculator"] main,body[data-admin-view="calculator"] #calc
 #calculatorMount .budget-library{padding:24px;margin-bottom:24px}#calculatorMount .budget-library>p{font-size:13px;color:#a0b1cc}#calculatorMount .budget-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:15px}#calculatorMount .budget-row{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:12px;align-items:center;padding:14px 0;border-bottom:1px solid #2b3a52}#calculatorMount .budget-row>div{min-width:0}#calculatorMount .budget-row strong{overflow-wrap:anywhere}#calculatorMount .budget-row small{display:block;color:#98b0d0;font-size:11px}#calculatorMount #budgetMessage{font-size:13px;color:#a8c5f3}@media(max-width:600px){#calculatorMount .budget-row{grid-template-columns:1fr 1fr}#calculatorMount .budget-row>div{grid-column:1/-1}}@media print{#calculatorMount .budget-library{display:none!important}}
 
 #calculatorMount .linked-product-calculation{padding:22px 24px;margin-bottom:24px;border-left:3px solid var(--blue)}#calculatorMount .linked-product-calculation h2{overflow-wrap:anywhere}#calculatorMount .linked-product-calculation p{font-size:13px;color:var(--ink-soft)}
+
+#calculatorMount .save-product-budget-dialog{width:calc(100% - 32px);max-width:480px;box-sizing:border-box;padding:30px;border:1px solid #30435e;border-radius:18px;background:#101721;color:#eef4ff;box-shadow:0 24px 80px #0009}
+#calculatorMount .save-product-budget-dialog::backdrop{background:rgba(3,7,14,.78);backdrop-filter:blur(5px)}
+#calculatorMount .save-product-budget-dialog h2{margin:12px 0;font-size:26px;line-height:1.2}
+#calculatorMount .save-product-budget-dialog p{color:#a8bdd8;font-size:14px;line-height:1.7}
+#calculatorMount .budget-dialog-actions{display:grid;gap:10px;margin-top:24px}
+#calculatorMount .budget-dialog-actions button{width:100%;min-height:46px;white-space:normal}
+#calculatorMount #saveProductBudgetYes{background:#165dff;color:white;border:1px solid #3478ff}
+#calculatorMount #saveProductBudgetCancel{border-color:transparent;color:#a8bdd8}
+@media(max-width:480px){#calculatorMount .save-product-budget-dialog{padding:24px}#calculatorMount .save-product-budget-dialog h2{font-size:23px}}
