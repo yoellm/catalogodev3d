@@ -39,7 +39,19 @@
     $('saveBudget').onclick=()=>save(false);$('saveBudgetCopy').onclick=()=>save(true);$('budgetSearch').oninput=render;controls();
     const stop=api?.watch(data=>{if(!alive||!isActive())return;records=data||{};if(selected&&!records[selected]){selected=null;$('saveBudget').textContent='Guardar presupuesto';}render();},()=>{if(alive){records={};render();message('No se pudieron cargar tus presupuestos. Revisa la conexión o vuelve a iniciar sesión.');}});
     if(!api)message('Los presupuestos guardados están disponibles al abrir la calculadora desde administración.');
-    return {clearSelection(){selected=null;$('budgetName').value='';$('saveBudget').textContent='Guardar presupuesto';message('');},destroy(){alive=false;stop?.();records={};$('budgetList').replaceChildren();$('budgetName').value='';message('');}};
+    return {async saveForProduct(name,calculo){
+      if(!alive||!isActive()||busy||!api)throw Error('Espera a que termine el guardado del presupuesto e int?ntalo de nuevo.');
+      const calculation=prepare(calculo);
+      busy=true;controls();render();message('Guardando presupuesto?');
+      try{
+        // A new product gets its own budget without overwriting a recovered one.
+        const id=await api.save({id:null,name:name.trim().slice(0,100),calculo:calculation});
+        if(!alive||!isActive())throw Error('La calculadora se ha cerrado.');
+        selected=id;$('budgetName').value=name.trim().slice(0,100);$('saveBudget').textContent='Guardar cambios';message('Presupuesto guardado. Se vincular? al producto al guardar su ficha.');
+        return id;
+      }catch(error){message('No se pudo completar el guardado. Tus datos siguen en la calculadora.');throw error;}
+      finally{busy=false;if(alive){controls();render();}}
+    },clearSelection(){selected=null;$('budgetName').value='';$('saveBudget').textContent='Guardar presupuesto';message('');},destroy(){alive=false;stop?.();records={};$('budgetList').replaceChildren();$('budgetName').value='';message('');}};
   }
   scope.DEV3D_BUDGETS={fields,prepare,mount};if(typeof module!=='undefined')module.exports=scope.DEV3D_BUDGETS;
 })(typeof window==='undefined'?globalThis:window);

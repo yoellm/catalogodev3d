@@ -140,7 +140,9 @@ function safeNumber(number, fallback = 0) {
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
-function openProductDraftInInventory(mode) {
+let preparingProduct = false;
+async function openProductDraftInInventory(mode) {
+  if (preparingProduct) return;
   if (!state.offer?.valid) return showToast("Revisa los avisos de la tarifa comercial");
   const options = commercialOptions();
   const publicOffer = computeCommercialOffer(state.lastCosts, {...options, saleChannel: 'direct'});
@@ -162,6 +164,20 @@ function openProductDraftInInventory(mode) {
   if(mode==='update'&&linkedProduct)data.productId=linkedProduct.id;
   const receiver=mode==='update'&&!linkedProduct?onUpdatePrices:onDraft;
   if (typeof receiver !== 'function') return showToast('No se pudo preparar el producto. Vuelve al panel y abre la calculadora de nuevo.');
+  if(mode!=='update' && budgets && scope.confirm?.('?Quieres guardar el presupuesto antes de crear el producto? Se guardar? con el nombre de la pieza y quedar? asociado al producto cuando guardes su ficha.')) {
+    preparingProduct = true;
+    $('#inventoryButton').disabled = true;
+    try {
+      await budgetView.saveForProduct(data.nombre, data.calculo);
+    } catch (error) {
+      showToast('No se pudo guardar el presupuesto. Revisa la conexi?n e int?ntalo de nuevo.');
+      return;
+    } finally {
+      preparingProduct = false;
+      $('#inventoryButton').disabled = !state.offer?.valid;
+    }
+    if (!active) return;
+  }
   const accepted = receiver(data);
   if (accepted === false) return;
   showToast('Precios por unidad preparados. El mínimo se aplica solo a tiendas.');

@@ -3,7 +3,8 @@ const {appDOM}=require('./helpers/app-dom.cjs');
 const {prepare}=require('../calculadora/budgets.js');
 (async()=>{
   const app=await appDOM('admin.html'),window=app.window;
-  window.confirm=()=>app.state.confirm;
+  let questions=0;window.confirm=()=>{questions++;return app.state.confirm;};
+  const settle=()=>new Promise(resolve=>setTimeout(resolve,0));
   Object.defineProperty(window.HTMLSelectElement.prototype,'selectedOptions',{configurable:true,get(){const options=[...this.querySelectorAll('option')];return options.filter(o=>o.hasAttribute('selected')).length?options.filter(o=>o.hasAttribute('selected')):options.slice(0,1);}});
   const context=vm.createContext({window,document:app.document,localStorage:{getItem:()=>null,setItem(){},removeItem(){}},navigator:{clipboard:{writeText:async()=>{}}},Intl,URL,console,structuredClone,setTimeout,clearTimeout,TextDecoder,TextEncoder,Uint8Array,DataView,Blob,Response,DecompressionStream,DOMParser:window.DOMParser});
   for(const file of ['commercial','profit-profiles','material-tax','budgets','app'])vm.runInContext(fs.readFileSync(path.join(__dirname,'../calculadora',file+'.js'),'utf8'),context);
@@ -16,12 +17,20 @@ const {prepare}=require('../calculadora/budgets.js');
   field('name','PLA especial');field('brand','Mi marca');field('weight',.25);field('price',24.2);field('factor',1.12);field('priceVat','gross');
   get('purchaseVatMode').value='deduct';get('purchaseVatPercent').value='21';get('purchaseVatMode').dispatchEvent(new window.Event('change',{bubbles:true}));
   const aux=root.querySelector('.aux-item input');aux.value='2.3';aux.dispatchEvent(new window.Event('input',{bubbles:true}));
-  get('inventoryButton').click();const form=app.node('productForm');assert.equal(app.node('productDialog').open,true);assert.equal(app.state.writes.length,0);
+  // Saving errors keep the calculation open, and declining still allows creation.
+  app.state.set=async()=>{throw Error('offline');};get('inventoryButton').click();await settle();
+  assert(!app.node('productDialog').open);assert.equal(get('pieceName').value,'Figura personalizada');assert.equal(get('inventoryButton').disabled,false);
+  app.state.set=null;app.state.confirm=false;get('inventoryButton').click();
+  assert.equal(app.node('productDialog').open,true);assert.equal(app.state.writes.length,0);app.node('productDialog').close();
+  app.state.confirm=true;get('inventoryButton').click();get('inventoryButton').click();await settle();
+  const form=app.node('productForm');assert.equal(app.node('productDialog').open,true);assert.equal(questions,3);assert.equal(app.state.writes.length,1);
+  const savedBudget=app.state.writes[0];assert.equal(savedBudget.name,'dev3dPresupuestos/admin/test-product');assert.equal(savedBudget.value.nombre,'Figura personalizada');
+
   assert.match(app.node('productMessage').textContent,/vinculará/);
   app.state.update=async()=>{throw Error('offline');};await app.submit('productForm');assert.match(app.node('productMessage').textContent,/No se ha podido/);assert.equal(form.elements.nombre.value,'Figura personalizada');
   app.state.update=null;form.elements.minimoTipo.value='producto';await app.submit('productForm');
   const updates=app.state.writes.at(-1).value,record=updates['dev3dProductoPresupuestos/test-product'];
-  assert(record);assert.equal(record.calculo.values.printMinutes,'7');assert.equal(record.calculo.values.laborMinutes,'23');assert.equal(record.calculo.values.wholesaleProfit,'27');assert.equal(record.calculo.values.profitPercent,'43');assert.equal(record.calculo.values.vatPercent,'10');assert.equal(record.calculo.materialTax.mode,'deduct');assert.equal(record.calculo.materialTax.rate,21);assert.equal(record.calculo.materials[0].name,'PLA especial');assert.equal(record.calculo.materials[0].kg,.25);assert.equal(record.calculo.materials[0].priceVat,'gross');assert.equal(record.calculo.auxiliaryItems[0].amount,2.3);
+  assert(record);assert.deepEqual(JSON.parse(JSON.stringify(record.calculo)),JSON.parse(JSON.stringify(savedBudget.value.calculo)));assert.equal(record.calculo.values.printMinutes,'7');assert.equal(record.calculo.values.laborMinutes,'23');assert.equal(record.calculo.values.wholesaleProfit,'27');assert.equal(record.calculo.values.profitPercent,'43');assert.equal(record.calculo.values.vatPercent,'10');assert.equal(record.calculo.materialTax.mode,'deduct');assert.equal(record.calculo.materialTax.rate,21);assert.equal(record.calculo.materials[0].name,'PLA especial');assert.equal(record.calculo.materials[0].kg,.25);assert.equal(record.calculo.materials[0].priceVat,'gross');assert.equal(record.calculo.auxiliaryItems[0].amount,2.3);
   for(const key of ['dev3dCatalogoPublico/test-product','dev3dCatalogoMayorista/test-product'])assert(!/calculo|laborMinutes|materialTax|PLA especial/.test(JSON.stringify(updates[key])));
   const product={...updates['dev3dCatalogoPublico/test-product'],nombre:'Figura publicada',descripcion:'Descripción que se conserva',colores:['Rojo','Azul'],imagenes:['https://example.test/foto.webp'],imagen:'https://example.test/foto.webp'};
   app.emit('dev3dCatalogoPublico',{'test-product':product});app.emit('dev3dCatalogoMayorista',{'test-product':updates['dev3dCatalogoMayorista/test-product']});
