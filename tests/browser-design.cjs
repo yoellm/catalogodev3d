@@ -72,6 +72,10 @@ async function checkLayout(page, label) {
   try {
     for(const width of [320,390,768,1440]) {
       const context=await browser.newContext({viewport:{width,height:900},reducedMotion:'reduce'});
+      await context.addInitScript(()=>{
+        Object.defineProperty(navigator,'share',{configurable:true,value:async data=>{window.testSharedProduct=data;}});
+        Object.defineProperty(navigator,'clipboard',{configurable:true,value:{writeText:async text=>{window.testCopiedProduct=text;}}});
+      });
       // Fail closed: no requests to production services during the suite.
       await context.route('**/*',route=>new URL(route.request().url()).origin===base ? route.continue() : route.abort());
       const page=await context.newPage();page.on('pageerror',e=>errors.push(e.message));
@@ -113,6 +117,12 @@ async function checkLayout(page, label) {
           await page.locator('#search').fill('not-a-product');assert.equal(await page.locator('.card').count(),0);
           await page.locator('#clearCatalogFilters').click();assert.equal(await page.locator('.card').count(),1);
           await page.locator('.product-details-link').first().click();assert.equal(await page.locator('#catalogDetailDialog').evaluate(e=>e.open),true);
+          await page.locator('#shareProduct').click();
+          assert.equal(await page.evaluate(()=>window.testSharedProduct.url),'https://www.dev3dstudio.es/catalogo.html#producto-demo');
+          assert.deepEqual(await page.evaluate(()=>Object.keys(window.testSharedProduct).sort()),['title','url']);
+          await page.evaluate(()=>Object.defineProperty(navigator,'share',{configurable:true,value:undefined}));
+          await page.locator('#shareProduct').click();
+          assert.equal(await page.evaluate(()=>window.testCopiedProduct),'https://www.dev3dstudio.es/catalogo.html#producto-demo');
           await page.keyboard.press('Escape');
           if(await page.locator('.account-menu>summary').isVisible())await page.locator('.account-menu>summary').click();
           await page.locator('#loginOpen').click();await page.locator('#forgotPassword').click();assert.equal(await page.locator('#passwordResetForm').isVisible(),true);

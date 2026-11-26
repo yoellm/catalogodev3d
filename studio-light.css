@@ -228,3 +228,23 @@ dialog::backdrop{background:#14233b66;backdrop-filter:blur(3px)}
  .home-hero h1{font-size:clamp(38px,9vw,56px)}
  .home-hero::after{background:radial-gradient(ellipse at 50% 43%,#fffffff5 0%,#ffffffeb 35%,#ffffff99 60%,#ffffff00 94%)}
 }
+
+/* Explain how to start a custom order at the point where people discover the service. */
+.custom-inquiry{display:flex;align-items:center;justify-content:space-between;gap:32px;margin-top:32px;padding:28px 30px;background:#edf3ff;border-radius:14px}
+.custom-inquiry>div{min-width:0;max-width:680px}
+.custom-inquiry h3,.custom-inquiry h2{margin:0 0 10px;font-size:22px;letter-spacing:-.02em}
+.custom-inquiry p{margin:0;font-size:14px;line-height:1.8;color:#415a81}
+.custom-inquiry .button-link{flex-shrink:0}
+.catalog-inquiry{margin-block:48px 12px}
+.product-share{margin-block:20px;padding-block:18px;border-block:1px solid #dce4ef}
+.product-share p{margin:10px 0 0;font-size:13px;color:#41516a}
+.product-share p:empty{display:none}
+.product-share>a{display:block;overflow-wrap:anywhere;margin-top:10px;color:#1652c4;font-size:13px}
+.browser-fallback{padding:22px;border:1px solid #bdcde6;border-radius:10px;background:#f3f6fc;color:#41516a}
+.browser-fallback a{color:#1652c4;text-underline-offset:4px}
+.missing-page{max-width:780px;margin:70px auto;text-align:center;padding-block:32px}
+.missing-page h1{font-size:clamp(36px,5vw,56px);line-height:1.15}
+.missing-page p{max-width:60ch;margin:24px auto;color:#526278}
+.missing-page p a{color:#1652c4;text-underline-offset:4px}
+@media(max-width:1000px){.custom-inquiry{align-items:flex-start;flex-direction:column;gap:20px}}
+@media(max-width:760px){.custom-inquiry{padding:24px}.custom-inquiry .button-link{width:100%;white-space:normal;text-align:center}}

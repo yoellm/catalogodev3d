@@ -29,3 +29,9 @@ La cabecera utiliza `logo-header.svg`: el logo completo con su tipografía origi
 Mantener el enlace para saltar al contenido, foco visible, controles de formulario de al menos 16 px en móvil, zoom permitido y controles táctiles amplios. El movimiento de entrada es breve y respeta `prefers-reduced-motion`. Los estilos de hover se limitan a dispositivos capaces de mantener el puntero sobre un elemento.
 
 La portada centra el texto y las acciones sobre un fondo animado que ocupa toda la sección, también en móvil. Una zona blanca suave mantiene el contraste en el centro. La animación tiene un botón de pausa accesible, se detiene cuando la portada sale de pantalla o la pestaña queda oculta, y muestra la pieza terminada estática con movimiento reducido. No volver a separar la ilustración en una columna lateral.
+
+## Descubrimiento y consultas
+
+Las creaciones reales se muestran antes que la presentación del estudio. Los encabezados explican la oferta con palabras concretas: figuras, regalos personalizados y diseño e impresión a medida. Junto a los servicios se explica cómo consultar una idea, con referencia, medidas y cantidad; la acción lleva a un mensaje de WhatsApp que el visitante debe revisar y enviar.
+
+La imagen para compartir utiliza el logo original, Manrope y los mismos colores. No añadir reseñas, plazos, materiales, disponibilidad o precios que no procedan del negocio. Compartir productos solo transmite el nombre y el enlace público. La página de error ofrece una salida clara al catálogo, al inicio y al contacto.

@@ -23,7 +23,7 @@
       $('detailAdd').disabled=submitting||state.checking||p.estado==='agotado'||!Number.isFinite(price)||(state.shop&&!Number.isSafeInteger(min));
     }
     function openProduct(id){
-      const state=getState(),p=state.products[id];if(!p)return;activeId=id;
+      const state=getState(),p=state.products[id];if(!p)return;activeId=id;$('catalogDetailDialog').dataset.productId=id;
       $('catalogDetailTitle').textContent=p.nombre;$('catalogDetailDescription').textContent=p.descripcion||'Este producto todavía no tiene una descripción.';
       const images=products.gallery(p);$('catalogDetailPhoto').replaceChildren();$('galleryThumbnails').replaceChildren();$('galleryPosition').textContent='';$('catalogDetailPhoto').hidden=!images.length;
       images.forEach((url,index)=>{const button=el('button',undefined,'gallery-thumbnail');button.type='button';button.setAttribute('aria-label','Ver foto '+(index+1));const image=el('img');image.src=url;image.alt='';image.loading='lazy';button.append(image);button.onclick=()=>{showImage(url,index,images.length);for(const sibling of $('galleryThumbnails').children)sibling.setAttribute('aria-pressed',String(sibling===button));};button.setAttribute('aria-pressed',String(index===0));$('galleryThumbnails').append(button);});

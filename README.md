@@ -1,5 +1,15 @@
 # DEV3D Studio · Web y catálogo
 
+## Descubrimiento y consultas
+
+La portada muestra las creaciones antes de la presentación del estudio. Servicios y preguntas frecuentes explican qué enviar para consultar una personalización; los enlaces preparados de WhatsApp requieren que el visitante revise y envíe el mensaje.
+
+Inicio, catálogo y solicitud de acceso tienen descripciones, URL canónica y metadatos Open Graph/Twitter. La imagen de 1200 × 630 en `assets/social-cover.png` está compuesta con el logo original y la fuente local, sin imágenes generadas. El sitemap incluye esas tres páginas públicas; administración, cuentas y errores mantienen `noindex`. `404.html` ofrece enlaces de recuperación con rutas absolutas para funcionar también desde direcciones anidadas.
+
+Los detalles del catálogo incorporan `catalogo-share.js`: utiliza el menú nativo de compartir, copia el enlace si no está disponible, y muestra un enlace seleccionable si el navegador no permite copiarlo. Solo se comparte nombre y URL pública; no precios mayoristas, condiciones privadas ni datos de cuenta. No se envían mensajes automáticamente.
+
+`tests/discovery.cjs` comprueba metadatos, canónicas, sitemap, imagen social y exclusiones de páginas privadas. La suite de navegador comprueba compartir y copiar con APIs simuladas, sin abrir aplicaciones externas ni usar el portapapeles real. Estas mejoras facilitan descubrir y consultar las piezas; no garantizan tráfico ni posiciones en buscadores.
+
 ## Identidad clara y vista de impresión 3D
 
 Todas las páginas utilizan `dev3d-light.css`, `interface-polish.css` y `studio-light.css`. La calculadora integrada utiliza `calculadora/native-light.css`. El sistema visual y sus recursos se documentan en `DESIGN.md`.

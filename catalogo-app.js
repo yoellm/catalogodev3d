@@ -300,6 +300,7 @@
         const preview=el('p',String(p.descripcion||'').replace(/\s+/g,' ').trim(),'description'),details=el('button','Ver detalles','product-details-link'),pricing=el('div',undefined,'catalog-pricing');
         details.type='button';details.setAttribute('aria-label','Ver detalles de '+p.nombre);
         details.onclick=()=>{
+          $('catalogDetailDialog').dataset.productId=id;
           if(commerce){commerce.openProduct(id);return;}
           $('catalogDetailTitle').textContent=p.nombre;$('catalogDetailDescription').textContent=p.descripcion||'Este producto todavía no tiene una descripción.';
           $('catalogDetailPhoto').replaceChildren();$('catalogDetailPhoto').hidden=!url;
