@@ -1,0 +1,49 @@
+name: Publicar catálogo y actualizar valoración
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '23 5 * * *'
+  workflow_dispatch:
+
+permissions: {}
+concurrency:
+  group: dev3d-pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Preparar archivos públicos
+        run: |
+          mkdir _site
+          cp -- *.html *.css *.js *.svg *.png robots.txt sitemap.xml CNAME _site/
+          cp -R -- assets calculadora _site/
+      - name: Consultar valoración de Google
+        continue-on-error: true
+        env:
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+          GOOGLE_REFRESH_TOKEN: ${{ secrets.GOOGLE_REFRESH_TOKEN }}
+          GOOGLE_REVIEWS_URL: ${{ secrets.GOOGLE_REVIEWS_URL }}
+        run: node scripts/google-review-summary.mjs
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: _site
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.publish.outputs.page_url }}
+    steps:
+      - name: Publicar
+        id: publish
+        uses: actions/deploy-pages@v4

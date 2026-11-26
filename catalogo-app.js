@@ -178,6 +178,15 @@
       });
       window.DEV3D_REVIEWS?.mount();
       if(!$('googleReviewCards').children.length){$('reviewsTitle').textContent='Tu opinión nos ayuda a crecer.';$('reviewsIntro').textContent='¿Ya tienes una pieza de DEV3D Studio? Cuéntanos tu experiencia en Google.';$('googleReviewsLink').textContent='Visitar nuestra ficha de Google ↗';}
+      const summary = window.DEV3D_GOOGLE_SUMMARY;
+      const age = Date.now() - summary?.updatedAt;
+      if (age >= 0 && age < 7 * 86400000 && summary.totalReviewCount > 0) {
+        const count = summary.totalReviewCount;
+        const rating = summary.averageRating.toLocaleString('es-ES', { maximumFractionDigits: 1 });
+        $('reviewsTitle').textContent = rating + ' de 5 en Google';
+        $('reviewsIntro').textContent = count.toLocaleString('es-ES') + (count === 1 ? ' reseña' : ' reseñas');
+        $('googleReviewsLink').textContent = 'Leer reseñas en Google ↗';
+      }
     }
   }
   try {
