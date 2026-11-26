@@ -1,0 +1,52 @@
+/* Shared refinements: preserve the studio palette and existing page layouts. */
+html { -webkit-text-size-adjust: 100%; }
+::selection { background: #294d99; color: #fff; }
+input, select, textarea { caret-color: var(--blue-light); }
+.skip-link {
+  position: fixed;
+  top: 12px;
+  left: 12px;
+  z-index: 1000;
+  padding: 12px 18px;
+  background: var(--text);
+  color: var(--bg);
+  border-radius: 6px;
+  transform: translateY(calc(-100% - 24px));
+  font-weight: 650;
+}
+.skip-link:focus { transform: none; }
+main:focus { outline: none; }
+summary:focus-visible, [tabindex="0"]:focus-visible {
+  outline: 2px solid #90b4ff;
+  outline-offset: 4px;
+}
+button, .button-link, summary, [role="button"] {
+  touch-action: manipulation;
+  -webkit-user-select: none;
+  user-select: none;
+}
+button:not(:disabled):active, .button-link:active { filter: brightness(.85); }
+dialog { overscroll-behavior: contain; scroll-padding-block: 24px; }
+.price, .order-grand-total, .product-management-table { font-variant-numeric: tabular-nums; }
+
+@media (max-width: 760px) {
+  /* 16px prevents Safari from zooming the page when a field receives focus. */
+  input:not([type="file"]), select, textarea { font-size: 16px; }
+  #forgotPassword { min-height: 44px; padding-block: 10px; }
+  .product-row-actions button, .product-pagination button,
+  .order-line-controls input { min-height: 44px; }
+  .text-link { min-height: 44px; }
+  dialog { max-height: calc(100dvh - 32px); }
+  .dialog-actions, .order-actions { flex-wrap: wrap; }
+  .dialog-actions > *, .order-actions > * { min-width: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto !important; }
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

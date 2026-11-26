@@ -1,5 +1,15 @@
 # DEV3D Studio · Web y catálogo
 
+## Identidad clara y vista de impresión 3D
+
+Todas las páginas utilizan `dev3d-light.css`, `interface-polish.css` y `studio-light.css`. La calculadora integrada utiliza `calculadora/native-light.css`. El sistema visual y sus recursos se documentan en `DESIGN.md`.
+
+`logo-light.svg` es la versión para fondo blanco del logo original: convierte los tonos blancos a negro y conserva el azul. `logo.png` se mantiene como original. Las fuentes Manrope se sirven desde `assets/`, con su licencia incluida.
+
+La portada incluye una escena automática de impresión 3D como fondo de toda la sección (`print-preview.js`): cama, pieza que crece por capas y cabezal móvil, sin barras laterales. La geometría se precalcula y la animación reutiliza los lienzos en ciclos de 18 segundos. Puede pausarse y se detiene fuera de pantalla, en pestañas ocultas o al solicitar movimiento reducido. No es un producto del catálogo ni calcula tiempos o costes reales.
+
+`npm run test:browser` ejecuta Playwright en Chrome sobre 48 vistas, entre 320 y 1440 px. Comprueba páginas públicas, menús, filtros, diálogos, teclado, contraste del texto y pantallas de administrador y tienda. Firebase se sustituye por datos locales simulados y se bloquean las peticiones externas. Las capturas se guardan en una carpeta temporal indicada al terminar. El script busca Playwright instalado en el proyecto o en el runtime local de Codex; `PLAYWRIGHT_MODULE` permite indicar otra ubicación del módulo. `npm test` mantiene las pruebas funcionales existentes.
+
 Aplicación estática para un repositorio y alojamiento propios. Utiliza Firebase del proyecto savvy-nature-200119 y la misma Realtime Database que el inventario, con datos separados por ramas.
 
 ## Separación de los datos
