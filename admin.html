@@ -164,6 +164,13 @@
                 <strong id="materialGrossTotalPreview">0,00 €</strong>
               </div>
             </div>
+            <div class="budget-fields">
+              <label class="field">
+                <span>Reserva para piezas fallidas</span>
+                <div class="input-suffix"><input id="failedPrintPercent" type="number" value="0" min="0" step="0.1"><b>%</b></div>
+                <small>El porcentaje se aplica al material, la electricidad y la amortización de las horas de impresión del lote.</small>
+              </label>
+            </div>
           </section>
 
           <section class="card input-card">
@@ -186,6 +193,17 @@
               </div>
             </div>
             <div class="formula-preview"><span>Horas × kW × coste kWh</span><strong id="electricityTotalPreview">0,00 €</strong></div>
+          </section>
+
+          <section class="card input-card" aria-labelledby="amortizacionTitulo">
+            <div class="card-heading"><h3 id="amortizacionTitulo">Amortización de la máquina</h3></div>
+            <div class="budget-fields">
+              <label class="field">
+                <span>Coste por hora de impresión</span>
+                <div class="input-suffix"><input id="machineHourlyCost" type="number" value="0" min="0" step="0.01"><b>€/h</b></div>
+                <small>Divide el precio de la impresora entre los años en que quieres recuperar la inversión y luego entre las horas que imprimes al año.</small>
+              </label>
+            </div>
           </section>
 
           <section class="card input-card">
@@ -253,17 +271,7 @@
               <span class="card-icon coral"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15.5A3.5 3.5 0 1 0 12 8a3.5 3.5 0 0 0 0 7.5Z"/><path d="M19 12a7 7 0 0 1-.2 1.7l2 1.5-2 3.5-2.5-1a7 7 0 0 1-3 1.7L13 22H9l-.4-2.6a7 7 0 0 1-3-1.7l-2.4 1-2-3.5 2-1.5A7 7 0 0 1 3 12c0-.6 0-1.2.2-1.7l-2-1.5 2-3.5 2.5 1a7 7 0 0 1 3-1.7L9 2h4l.4 2.6a7 7 0 0 1 3 1.7l2.4-1 2 3.5-2 1.5c.1.5.2 1.1.2 1.7Z"/></svg></span>
             </div>
             <div class="budget-fields">
-              <label class="field">
-                <span>Amortización de la máquina</span>
-                <div class="input-suffix"><input id="machineHourlyCost" type="number" value="0" min="0" step="0.01"><b>€/h</b></div>
-                <small>Divide el precio de la impresora entre los años en que quieres recuperar la inversión y luego entre las horas que imprimes al año.</small>
-              </label>
-              <label class="field">
-                <span>Reserva para piezas fallidas</span>
-                <div class="input-suffix"><input id="failedPrintPercent" type="number" value="0" min="0" step="0.1"><b>%</b></div>
-                <small>El porcentaje se aplica al material, la electricidad y la amortización de las horas de impresión del lote.</small>
-              </label>
-              <label class="field">
+            <label class="field">
                 <span>Mantenimiento / desgaste</span>
                 <div class="input-suffix"><input id="maintenancePercent" type="number" value="10" min="0" max="1000" step="0.5"><b>%</b></div>
                 <small>Aplicado sobre material, electricidad, operarios y auxiliares</small>
