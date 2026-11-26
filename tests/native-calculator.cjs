@@ -28,9 +28,17 @@ field('weight',.1);field('price',10);field('factor',1);field('priceVat','net');
 const aux=root.querySelector('.aux-item input');aux.value='0';aux.dispatchEvent(new window.Event('input',{bubbles:true}));
 assert.equal(external.value,'777');assert.equal(euroValue('realCost'),1);assert.equal(euroValue('recommendedPrice'),1.6);
 set('printHours',2);set('machineHourlyCost',1.5);set('maintenancePercent',10);set('failedPrintPercent',10);
-// Material 1 + mantenimiento 0,10 + máquina 3 = 4,10; reserva 0,41.
-assert.equal(euroValue('realCost'),4.51);
-set('quantity',2);assert.equal(euroValue('realCost'),2.26);
+// Reserva: (material 1 + máquina 3) × 10 % = 0,40.
+assert.equal(euroValue('realCost'),4.50);
+set('quantity',2);assert.equal(euroValue('realCost'),2.25);
+set('printerPowerKw',0.5);set('electricityPrice',1);
+set('operatorCount',1);set('laborHours',1);set('laborMinutes',0);set('laborSeconds',0);set('laborRate',10);
+const auxiliaryAmount=root.querySelector('[data-aux-amount]');
+auxiliaryAmount.value='8';auxiliaryAmount.dispatchEvent(new window.Event('input',{bubbles:true}));
+// Electricidad 1; mano de obra 10 y auxiliares 8. Mantenimiento 2; reserva 0,50.
+assert.equal(euroValue('realCost'),12.75);
+auxiliaryAmount.value='0';auxiliaryAmount.dispatchEvent(new window.Event('input',{bubbles:true}));
+set('printerPowerKw',0);set('operatorCount',0);
 for(const id of ['printHours','machineHourlyCost','maintenancePercent','failedPrintPercent'])set(id,0);
 set('quantity',1);
 assert.equal(get('shopResaleResult').hidden,true);assert.match(get('offerTitle').textContent,/cobras al cliente/);

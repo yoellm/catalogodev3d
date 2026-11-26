@@ -427,7 +427,8 @@ function calculate() {
   const maintenance = directCost * maintenanceRate;
   const depreciation = hours * Math.max(0, value("machineHourlyCost"));
   const productionCost = directCost + maintenance + depreciation;
-  const failureReserve = productionCost * Math.max(0, value("failedPrintPercent")) / 100;
+  const reprintCost = material + electricity + depreciation;
+  const failureReserve = reprintCost * Math.max(0, value("failedPrintPercent")) / 100;
   const costBase = productionCost + failureReserve;
   const profitRate = Math.max(0, value("profitPercent")) / 100;
   const profit = costBase * profitRate;
