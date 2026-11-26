@@ -258,8 +258,11 @@
         const card = el('a',undefined,'featured-product');
         card.href = 'catalogo.html#producto-' + encodeURIComponent(id);
         const photo = el('div',undefined,'featured-photo'), image = el('img');
-        image.src = safeUrl(p.imagen); image.alt = p.nombre; image.loading = 'lazy'; image.decoding = 'async';
-        image.addEventListener('error',()=>{ photo.replaceChildren(el('span','Fotografía no disponible','image-unavailable')); });
+        const url=safeUrl(p.imagen);
+        const placeholder=()=>{image.src='logo-light.svg';image.alt='DEV3D Studio: imagen provisional de '+p.nombre;image.className='featured-placeholder';};
+        if(url){image.src=url;image.alt=p.nombre;}else placeholder();
+        image.loading='lazy';image.decoding='async';
+        image.addEventListener('error',placeholder,{once:true});
         photo.append(image);
         const body = el('div',undefined,'featured-product-body');
         body.append(el('span',p.categoria || 'Impresión 3D','tag'),el('h3',p.nombre),el('span','Ver pieza →','featured-action'));

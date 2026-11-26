@@ -246,6 +246,7 @@ dialog::backdrop{background:#14233b66;backdrop-filter:blur(3px)}
 .featured-track .featured-product{flex:0 0 calc((100% - 66px)/3.35);min-width:0;scroll-snap-align:start}
 .featured-track .featured-photo{aspect-ratio:4/3;background:#f3f6fb}
 .featured-track .featured-photo img{object-fit:contain;padding:12px}
+.featured-track .featured-photo img.featured-placeholder{padding:28px;opacity:.55}
 .featured-track .featured-product-body{padding:16px;display:flex;flex-direction:column;flex:1}
 .featured-track h3{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;min-height:2.9em;font-size:16px;line-height:1.45;margin:10px 0 14px}
 .featured-track .featured-action{margin-top:auto;font-size:13px}

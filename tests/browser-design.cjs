@@ -27,7 +27,7 @@ function fixture(role) {
     const auth={currentUser:user};
     const profile={nombre:'Tienda de prueba',email:'shop@example.test',rol:'tienda',activo:true};
     const data={dev3dCatalogoPublico:{demo:{nombre:'Pieza de prueba visual',categoria:'Impresión 3D',precio:12,descripcion:'Producto simulado para verificar la interfaz.',imagen:'/logo-light.svg',disponibilidad:'disponible'}},dev3dCatalogoMayorista:{demo:{precio:8,minimo:5}},dev3dTiendas:{'preview-shop':profile}};
-    if(document.body.dataset.home==='true')data.dev3dCatalogoPublico=Object.fromEntries(Array.from({length:12},(_,i)=>['piece-'+i,{nombre:'Pieza de prueba '+String(i+1).padStart(2,'0'),categoria:'Impresión 3D',precio:12,imagen:location.origin+'/logo-light.svg'}]));
+    if(document.body.dataset.home==='true')data.dev3dCatalogoPublico=Object.fromEntries(Array.from({length:12},(_,i)=>['piece-'+i,{nombre:'Pieza de prueba '+String(i+1).padStart(2,'0'),categoria:'Impresión 3D',precio:12,imagen:i===0?'':i===1?location.origin+'/missing-featured-photo.jpg':location.origin+'/logo-light.svg'}]));
     window.CATALOGO_CONFIG={firebaseConfig:{databaseURL:'https://preview.invalid'},ADMIN_EMAILS:['admin@example.test']};
     const database={getDatabase:()=>({}),ref:(_,n)=>n,query:n=>n,orderByChild:()=>{},equalTo:()=>{},onValue:(n,cb)=>{const value=n.split('/').reduce((o,k)=>o?.[k],data);queueMicrotask(()=>cb({val:()=>value||null}));return()=>{};},get:async()=>({val:()=>null}),serverTimestamp:()=>0,set:async()=>{throw Error('Writes blocked in browser tests')},update:async()=>{throw Error('Writes blocked in browser tests')},push:()=>({key:'preview'})};
     window.CATALOGO_BOOT={loadFirebase:async()=>[{initializeApp:()=>({})},database,{getAuth:()=>auth,onAuthStateChanged:(_,fn)=>{setTimeout(()=>fn(user),0);return()=>{}},signOut:async()=>{},EmailAuthProvider:{credential:()=>({})}},{getStorage:()=>({})}]};
@@ -114,6 +114,8 @@ async function checkLayout(page, label) {
           await page.screenshot({path:path.join(output,`home-${width}.png`)});
           await page.locator('#featuredCarousel').scrollIntoViewIfNeeded();
           assert.equal(await page.locator('#featuredProducts .featured-product').count(),12);
+          await page.waitForFunction(()=>document.querySelectorAll('#featuredProducts .featured-placeholder').length===2);
+          assert.equal(await page.locator('#featuredProducts .featured-placeholder').first().getAttribute('src'),'logo-light.svg');
           assert.ok((await page.locator('#featuredProducts .featured-product').first().boundingBox()).width<=251,'Carousel cards must stay compact');
           await page.locator('#featuredNext').click();
           await page.waitForFunction(()=>document.getElementById('featuredProducts').scrollLeft>0);

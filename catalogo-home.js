@@ -3,7 +3,7 @@
   function selectFeatured(source,limit=12){
     return Object.entries(source || {}).filter(([,p])=>{
       if(!p || typeof p.nombre!=='string' || !p.nombre.trim() || typeof p.precio!=='number' || !Number.isFinite(p.precio) || p.precio<0) return false;
-      try{return ['http:','https:'].includes(new URL(p.imagen).protocol);}catch{return false;}
+      return true;
     }).sort((a,b)=>a[1].nombre.localeCompare(b[1].nombre,'es')).slice(0,Math.max(0,Math.min(12,limit)));
   }
   function googleReviewUrl(value){
