@@ -17,20 +17,36 @@
     autoplay.innerHTML=paused?'<svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="m6 3 11 7-11 7z"/></svg>':'<svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M6 4h3v12H6zm5 0h3v12h-3z"/></svg>';
     position.setAttribute('aria-live',paused||reduced.matches?'polite':'off');
   }
-  autoplay?.addEventListener('click',()=>{paused=!paused;pauseUntil=0;syncAutoplay();});
-  wrapper.addEventListener('pointerenter',event=>{if(event.pointerType==='mouse')hovered=true;});
-  wrapper.addEventListener('pointerleave',()=>{hovered=false;});
-  wrapper.addEventListener('pointerdown',()=>{pauseUntil=Date.now()+10000;},{passive:true});
-  wrapper.addEventListener('keydown',()=>{pauseUntil=Date.now()+10000;});
-  new IntersectionObserver(([entry])=>{visible=entry.isIntersecting;},{threshold:.25}).observe(wrapper);
-  reduced.addEventListener('change',syncAutoplay);
-  setInterval(()=>{
-    if(paused||!visible||hovered||document.hidden||reduced.matches||wrapper.contains(document.activeElement)||Date.now()<pauseUntil)return;
-    const max=track.scrollWidth-track.clientWidth;if(max<=1)return;
-    if(track.scrollLeft>=max-2)direction=-1;
-    else if(track.scrollLeft<=1)direction=1;
-    move(direction);
-  },5000);
+  let frame=0,last=0,offset=0,wake;
+  const canMove=()=>!paused&&visible&&!hovered&&!document.hidden&&!reduced.matches&&!wrapper.contains(document.activeElement)&&Date.now()>=pauseUntil&&track.scrollWidth>track.clientWidth+1;
+  function tick(now){
+    frame=0;if(!canMove())return;
+    const elapsed=last?Math.min(now-last,50):0;last=now;
+    const max=track.scrollWidth-track.clientWidth;
+    offset+=direction*elapsed*.016; // 16 CSS pixels per second, independent of refresh rate.
+    if(offset>=max){offset=max;direction=-1;}
+    if(offset<=0){offset=0;direction=1;}
+    track.scrollLeft=offset;
+    frame=requestAnimationFrame(tick);
+  }
+  function syncMotion(){
+    cancelAnimationFrame(frame);frame=0;last=0;offset=track.scrollLeft;
+    if(canMove())frame=requestAnimationFrame(tick);
+  }
+  function interact(){
+    pauseUntil=Date.now()+10000;clearTimeout(wake);syncMotion();
+    wake=setTimeout(syncMotion,10020);
+  }
+  autoplay?.addEventListener('click',()=>{paused=!paused;pauseUntil=0;syncAutoplay();syncMotion();});
+  wrapper.addEventListener('pointerenter',event=>{if(event.pointerType==='mouse')hovered=true;syncMotion();});
+  wrapper.addEventListener('pointerleave',()=>{hovered=false;syncMotion();});
+  wrapper.addEventListener('pointerdown',interact,{passive:true});
+  wrapper.addEventListener('keydown',interact);
+  wrapper.addEventListener('focusin',syncMotion);
+  wrapper.addEventListener('focusout',()=>queueMicrotask(syncMotion));
+  document.addEventListener('visibilitychange',syncMotion);
+  new IntersectionObserver(([entry])=>{visible=entry.isIntersecting;syncMotion();},{threshold:.25}).observe(wrapper);
+  reduced.addEventListener('change',()=>{syncAutoplay();syncMotion();});
   syncAutoplay();
   function update(){
     const cards=[...track.children],max=Math.max(0,track.scrollWidth-track.clientWidth);
@@ -54,7 +70,7 @@
     if(event.key==='Home'||event.key==='End'){event.preventDefault();track.scrollTo({left:event.key==='Home'?0:track.scrollWidth,behavior:'auto'});}
   });
   track.addEventListener('scroll',update,{passive:true});
-  new ResizeObserver(update).observe(track);
-  new MutationObserver(()=>{track.scrollLeft=0;update();}).observe(track,{childList:true});
+  new ResizeObserver(()=>{update();syncMotion();}).observe(track);
+  new MutationObserver(()=>{track.scrollLeft=0;update();syncMotion();}).observe(track,{childList:true});
   update();
 })();

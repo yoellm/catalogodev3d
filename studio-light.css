@@ -242,12 +242,12 @@ dialog::backdrop{background:#14233b66;backdrop-filter:blur(3px)}
 .product-share>a{display:block;overflow-wrap:anywhere;margin-top:10px;color:#1652c4;font-size:13px}
 
 /* Creations: a product shelf with native swipe and a clear next-item affordance. */
-.featured-track{display:flex;gap:22px;overflow-x:auto;scroll-snap-type:x mandatory;overscroll-behavior-x:contain;scrollbar-width:thin;scrollbar-color:#a8bfdf #edf3fb;padding:4px 2px 18px;scroll-padding-inline:2px}
+.featured-track{display:flex;gap:22px;overflow-x:auto;scroll-snap-type:none;overscroll-behavior-x:contain;scrollbar-width:thin;scrollbar-color:#a8bfdf #edf3fb;padding:4px 2px 18px;scroll-padding-inline:2px}
 .featured-track .featured-product{flex:0 0 calc((100% - 66px)/3.35);min-width:0;scroll-snap-align:start}
-.featured-track .featured-photo{aspect-ratio:1/1;background:#f3f6fb}
+.featured-track .featured-photo{aspect-ratio:4/3;background:#f3f6fb}
 .featured-track .featured-photo img{object-fit:contain;padding:12px}
-.featured-track .featured-product-body{padding:22px;display:flex;flex-direction:column;flex:1}
-.featured-track h3{font-size:18px;line-height:1.45;margin:12px 0 20px}
+.featured-track .featured-product-body{padding:16px;display:flex;flex-direction:column;flex:1}
+.featured-track h3{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;min-height:2.9em;font-size:16px;line-height:1.45;margin:10px 0 14px}
 .featured-track .featured-action{margin-top:auto;font-size:13px}
 .featured-controls{display:flex;align-items:center;justify-content:space-between;gap:20px;margin-top:14px}
 .featured-controls>span{font-size:13px;color:#526278;font-variant-numeric:tabular-nums}
@@ -255,7 +255,7 @@ dialog::backdrop{background:#14233b66;backdrop-filter:blur(3px)}
 .featured-controls button{width:46px;height:46px;padding:0;font-size:22px}
 .featured-track:focus-visible{outline:2px solid #165dff;outline-offset:5px;border-radius:14px}
 .home-main>#creaciones{grid-column:1/-1;width:100%;max-width:none;padding-inline:var(--page-gutter)}
-.featured-track .featured-product{flex-basis:calc((100% - 66px)/3.15)}
+.featured-track .featured-product{flex-basis:250px}
 .featured-autoplay svg{width:18px;height:18px;display:block;margin:auto}
 
 /* Catalogue: keep the complete object visible and make the details action clear. */
@@ -294,10 +294,10 @@ body[data-admin] .workspace-heading h1{font-weight:800}
 .product-row-actions button:first-child{background:#edf3ff;border-color:#c4d7fa;color:#1652c4;font-weight:700}
 .product-pagination{padding-block:16px;border-top:1px solid #e0e7f1}
 @media(hover:hover) and (pointer:fine){#grid .product-details-link:hover,.product-row-actions button:first-child:hover{background:#dfeaff;color:#1649a1}.product-management-table tbody tr:hover{background:#edf3ff}}
-@media(max-width:1000px){.featured-track .featured-product{flex-basis:calc((100% - 44px)/2.25)}}
+@media(max-width:1000px){.featured-track .featured-product{flex-basis:230px}}
 @media(max-width:760px){
- .featured-track{gap:16px}.featured-track .featured-product{flex-basis:88%}.featured-track .featured-photo{aspect-ratio:1/1}
- .featured-track .featured-product-body{padding:20px}.featured-controls{margin-top:10px}
+ .featured-track{gap:16px}.featured-track .featured-product{flex-basis:210px}.featured-track .featured-photo{aspect-ratio:4/3}
+ .featured-track .featured-product-body{padding:16px}.featured-controls{margin-top:10px}
  #grid .card-body{padding:22px}#catalogSection .toolbar{padding:20px;gap:16px}
  body[data-admin] #adminDashboard .dashboard-grid{grid-template-columns:1fr;gap:16px}
  body[data-admin] #adminDashboard .dashboard-card{min-height:220px;padding:26px}

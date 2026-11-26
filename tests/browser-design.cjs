@@ -114,6 +114,7 @@ async function checkLayout(page, label) {
           await page.screenshot({path:path.join(output,`home-${width}.png`)});
           await page.locator('#featuredCarousel').scrollIntoViewIfNeeded();
           assert.equal(await page.locator('#featuredProducts .featured-product').count(),12);
+          assert.ok((await page.locator('#featuredProducts .featured-product').first().boundingBox()).width<=251,'Carousel cards must stay compact');
           await page.locator('#featuredNext').click();
           await page.waitForFunction(()=>document.getElementById('featuredProducts').scrollLeft>0);
           const track=page.locator('#featuredProducts');await track.focus();await page.keyboard.press('End');
@@ -128,6 +129,10 @@ async function checkLayout(page, label) {
             await page.waitForTimeout(10500);
             const beforeAuto=await track.evaluate(e=>e.scrollLeft);
             await page.waitForFunction(previous=>Math.abs(document.getElementById('featuredProducts').scrollLeft-previous)>20,beforeAuto,{timeout:6500});
+            const a=await track.evaluate(e=>e.scrollLeft);await page.waitForTimeout(500);
+            const b=await track.evaluate(e=>e.scrollLeft);await page.waitForTimeout(500);
+            const c=await track.evaluate(e=>e.scrollLeft);
+            assert.ok(b-a>=3&&b-a<=15&&c-b>=3&&c-b<=15,'Autoplay should move continuously and slowly, without card-sized jumps');
             await page.locator('#featuredAutoplay').click();
             assert.equal(await page.locator('#featuredAutoplay').getAttribute('aria-pressed'),'true');
             await page.mouse.move(0,0);await page.locator('#featuredAutoplay').evaluate(e=>e.blur());
