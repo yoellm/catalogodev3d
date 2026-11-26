@@ -1,5 +1,5 @@
 'use strict';
-const {fields}=require('../calculadora/budgets.js');
+const {fields,machineCostFields}=require('../calculadora/budgets.js');
 const {profiles,legacyProfileIds}=require('../calculadora/profit-profiles.js');
 const admin="auth != null && auth.uid == $uid && (auth.token.email == 'yoelmejias@outlook.es' || auth.token.email == 'irelandmorcillo@gmail.com')";
 const text=max=>({'.validate':`newData.isString() && newData.val().length <= ${max}`}),number={'.validate':'newData.isNumber() && newData.val() >= 0'};
@@ -9,7 +9,7 @@ module.exports={'$uid':{'.read':admin,'.write':admin,'$id':{
  calculo:{'.validate':"newData.hasChildren(['version','defaultsVersion','values','mode'])",version:{'.validate':'newData.val() == 1'},defaultsVersion:number,mode:{'.validate':"newData.val() == 'manual'"},
   wholesaleProfile:{'.validate':["newData.val() == 'manual'",...[...Object.keys(profiles),...legacyProfileIds].map(id=>"newData.val() == '"+id+"'")].join(' || ')},
   materialTax:{'.validate':"newData.hasChildren(['mode','rate'])",mode:{'.validate':"newData.val() == 'auto' || newData.val() == 'keep' || newData.val() == 'deduct'"},rate:{'.validate':'newData.isNumber() && newData.val() >= 0 && newData.val() <= 100'},'$other':{'.validate':false}},
-  values:{'.validate':`newData.hasChildren(${JSON.stringify(fields)})`,...Object.fromEntries(fields.map(key=>[key,text(200)])),'$other':{'.validate':false}},
+  values:{'.validate':`newData.hasChildren(${JSON.stringify(fields)})`,...Object.fromEntries([...fields,...machineCostFields].map(key=>[key,text(200)])),'$other':{'.validate':false}},
   materials:{'$index':material},auxiliaryItems:{'$index':{'.validate':"$index.matches(/^([0-9]|[1-9][0-9])$/) && newData.hasChildren(['name','amount'])",name:text(150),amount:number,'$other':{'.validate':false}}},'$other':{'.validate':false}
  },'$other':{'.validate':false}
 }}};

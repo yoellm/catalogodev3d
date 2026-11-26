@@ -27,6 +27,12 @@ for(const [id,value] of Object.entries({quantity:1,printDays:0,printHours:0,prin
 field('weight',.1);field('price',10);field('factor',1);field('priceVat','net');
 const aux=root.querySelector('.aux-item input');aux.value='0';aux.dispatchEvent(new window.Event('input',{bubbles:true}));
 assert.equal(external.value,'777');assert.equal(euroValue('realCost'),1);assert.equal(euroValue('recommendedPrice'),1.6);
+set('printHours',2);set('machineHourlyCost',1.5);set('maintenancePercent',10);set('failedPrintPercent',10);
+// Material 1 + mantenimiento 0,10 + máquina 3 = 4,10; reserva 0,41.
+assert.equal(euroValue('realCost'),4.51);
+set('quantity',2);assert.equal(euroValue('realCost'),2.26);
+for(const id of ['printHours','machineHourlyCost','maintenancePercent','failedPrintPercent'])set(id,0);
+set('quantity',1);
 assert.equal(get('shopResaleResult').hidden,true);assert.match(get('offerTitle').textContent,/cobras al cliente/);
 assert.equal(root.querySelector('.cost-details').hasAttribute('open'),false);
 assert.equal(root.querySelector('.offer-calculation-details').hasAttribute('open'),false);

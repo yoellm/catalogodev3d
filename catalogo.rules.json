@@ -340,6 +340,12 @@
               },
               "$other": {
                 ".validate": false
+              },
+              "machineHourlyCost": {
+                ".validate": "newData.isString() && newData.val().length <= 200"
+              },
+              "failedPrintPercent": {
+                ".validate": "newData.isString() && newData.val().length <= 200"
               }
             },
             "materials": {
@@ -541,6 +547,12 @@
             },
             "$other": {
               ".validate": false
+            },
+            "machineHourlyCost": {
+              ".validate": "newData.isString() && newData.val().length <= 200"
+            },
+            "failedPrintPercent": {
+              ".validate": "newData.isString() && newData.val().length <= 200"
             }
           },
           "materials": {

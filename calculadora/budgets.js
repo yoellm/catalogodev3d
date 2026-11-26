@@ -1,6 +1,7 @@
 (function(scope){
   'use strict';
   const fields=['pieceName','printerName','quantity','printDays','printHours','printMinutes','printSeconds','filamentDiameter','gcodeMaterialType','gcodeBrand','gcodeMaterialPrice','gcodeErrorFactor','printerPowerKw','electricityPrice','operatorCount','laborHours','laborMinutes','laborSeconds','laborRate','maintenancePercent','profitPercent','vatPercent','partnerMarkupPercent','saleChannel','fixedPricing','wholesaleProfit','shopMargin','targetPvp','shopMinimum','rateName','referenceCost','costBuffer'];
+  const machineCostFields=['machineHourlyCost','failedPrintPercent'];
   const profitProfiles=typeof module!=='undefined'?require('./profit-profiles.js'):scope.DEV3D_PROFIT_PROFILES;
   const materialTax=typeof module!=='undefined'?require('./material-tax.js'):scope.DEV3D_MATERIAL_TAX;
   const numberFields=['nozzle','layer','kg','factor','price'];
@@ -11,6 +12,7 @@
     const materialList=list(data?.materials),auxiliaryList=list(data?.auxiliaryItems);
     if(!data||!data.values||!materialList||!auxiliaryList||materialList.length>100||auxiliaryList.length>100)throw Error('El presupuesto admite hasta 100 materiales y 100 auxiliares.');
     const values=Object.fromEntries(fields.map(key=>[key,text(data.values[key],200)]));
+    for(const key of machineCostFields) values[key]=text(data.values[key] ?? '0',200);
     const materials=materialList.map(m=>({name:text(m.name||'',150),brand:text(m.brand||'',150),...Object.fromEntries(numberFields.map(key=>[key,number(m[key])])),unit:m.unit==='g'?'g':'kg',priceVat:m.priceVat==='gross'?'gross':'net',color:/^#[0-9a-f]{6}$/i.test(m.color||'')?m.color:''}));
     const auxiliaryItems=auxiliaryList.map(a=>({name:text(a.name||'',150),amount:number(a.amount)}));
     return {version:1,defaultsVersion:number(data.defaultsVersion),values,materials,auxiliaryItems,mode:'manual',wholesaleProfile:profitProfiles.normalize(data.wholesaleProfile,values.wholesaleProfit),materialTax:materialTax.normalize(data.materialTax||materialTax.legacy(values.vatPercent))};
@@ -53,5 +55,5 @@
       finally{busy=false;if(alive){controls();render();}}
     },clearSelection(){selected=null;$('budgetName').value='';$('saveBudget').textContent='Guardar presupuesto';message('');},destroy(){alive=false;stop?.();records={};$('budgetList').replaceChildren();$('budgetName').value='';message('');}};
   }
-  scope.DEV3D_BUDGETS={fields,prepare,mount};if(typeof module!=='undefined')module.exports=scope.DEV3D_BUDGETS;
+  scope.DEV3D_BUDGETS={fields,machineCostFields,prepare,mount};if(typeof module!=='undefined')module.exports=scope.DEV3D_BUDGETS;
 })(typeof window==='undefined'?globalThis:window);

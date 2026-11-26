@@ -87,7 +87,7 @@ const fieldIds = [
   "pieceName", "printerName", "quantity", "printDays", "printHours", "printMinutes", "printSeconds",
   "filamentDiameter", "gcodeMaterialType", "gcodeBrand", "gcodeMaterialPrice",
   "gcodeErrorFactor", "printerPowerKw", "electricityPrice", "operatorCount",
-  "laborHours", "laborMinutes", "laborSeconds", "laborRate", "maintenancePercent", "profitPercent", "vatPercent",
+  "laborHours", "laborMinutes", "laborSeconds", "laborRate", "machineHourlyCost", "failedPrintPercent", "maintenancePercent", "profitPercent", "vatPercent",
   "partnerMarkupPercent", "saleChannel", "fixedPricing", "wholesaleProfit", "shopMargin",
   "targetPvp", "shopMinimum", "rateName", "referenceCost", "costBuffer"
 ];
@@ -425,7 +425,10 @@ function calculate() {
   const directCost = material + electricity + labor + auxiliaries;
   const maintenanceRate = Math.max(0, value("maintenancePercent")) / 100;
   const maintenance = directCost * maintenanceRate;
-  const costBase = directCost + maintenance;
+  const depreciation = hours * Math.max(0, value("machineHourlyCost"));
+  const productionCost = directCost + maintenance + depreciation;
+  const failureReserve = productionCost * Math.max(0, value("failedPrintPercent")) / 100;
+  const costBase = productionCost + failureReserve;
   const profitRate = Math.max(0, value("profitPercent")) / 100;
   const profit = costBase * profitRate;
   const beforeVat = costBase + profit;
@@ -441,7 +444,7 @@ function calculate() {
 
   state.lastCosts = {
     hours, quantity, material, materialGross, totalKg, electricity, laborTimeHours, labor, auxiliaryItems,
-    auxiliaries, directCost, maintenanceRate, maintenance, costBase, profitRate, profit, beforeVat,
+    auxiliaries, directCost, maintenanceRate, maintenance, depreciation, failureReserve, costBase, profitRate, profit, beforeVat,
     vatRate, vat, finalPrice, recommendedFinal,
     unitCost: costBase / quantity,
     unitProfit: profit / quantity,
@@ -494,7 +497,9 @@ function renderResults() {
     { label: "Electricidad", value: c.electricity / c.quantity, color: colors[1] },
     { label: "Operarios", value: c.labor / c.quantity, color: colors[2] },
     { label: "Mat. auxiliares", value: c.auxiliaries / c.quantity, color: colors[3] },
-    { label: `Mantenimiento (${decimal.format(c.maintenanceRate * 100)}%)`, value: c.maintenance / c.quantity, color: colors[4] }
+    { label: `Mantenimiento (${decimal.format(c.maintenanceRate * 100)}%)`, value: c.maintenance / c.quantity, color: colors[4] },
+    { label: "Amortización", value: c.depreciation / c.quantity, color: "#087e85" },
+    { label: "Reserva para piezas fallidas", value: c.failureReserve / c.quantity, color: "#ac4869" }
   ];
   const visibleParts = parts.filter((part) => part.value > 0);
   const total = visibleParts.reduce((sum, part) => sum + part.value, 0);
@@ -1267,6 +1272,8 @@ function copySummary() {
     `Materiales auxiliares: ${euro.format(c.auxiliaries)}`,
     `Mantenimiento (${decimal.format(c.maintenanceRate * 100)}%): ${euro.format(c.maintenance)}`,
     "",
+    `Amortización de la máquina: ${euro.format(c.depreciation)}`,
+    `Reserva para piezas fallidas: ${euro.format(c.failureReserve)}`,
     `Coste total del lote: ${euro.format(c.costBase)}`,
     `Coste total por unidad: ${euro.format(c.unitCost)}`,
     `Tu beneficio por unidad sin IVA: ${euro.format(state.offer.actualProfit)}`
