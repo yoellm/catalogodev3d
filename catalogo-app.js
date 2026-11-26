@@ -186,6 +186,14 @@
         $('reviewsTitle').textContent = rating + ' de 5 en Google';
         $('reviewsIntro').textContent = count.toLocaleString('es-ES') + (count === 1 ? ' reseña' : ' reseñas');
         $('googleReviewsLink').textContent = 'Leer reseñas en Google ↗';
+        const actions = document.querySelector('.home-actions');
+        if (actions) {
+          const link = el('a', '★ ' + rating + '/5 · Leer ' + count.toLocaleString('es-ES') + (count === 1 ? ' reseña' : ' reseñas') + ' en Google ↗', 'text-link');
+          link.href = url;
+          link.target = '_blank';
+          link.rel = 'noopener noreferrer';
+          actions.after(link);
+        }
       }
     }
   }
