@@ -240,6 +240,71 @@ dialog::backdrop{background:#14233b66;backdrop-filter:blur(3px)}
 .product-share p{margin:10px 0 0;font-size:13px;color:#41516a}
 .product-share p:empty{display:none}
 .product-share>a{display:block;overflow-wrap:anywhere;margin-top:10px;color:#1652c4;font-size:13px}
+
+/* Creations: a product shelf with native swipe and a clear next-item affordance. */
+.featured-track{display:flex;gap:22px;overflow-x:auto;scroll-snap-type:x mandatory;overscroll-behavior-x:contain;scrollbar-width:thin;scrollbar-color:#a8bfdf #edf3fb;padding:4px 2px 18px;scroll-padding-inline:2px}
+.featured-track .featured-product{flex:0 0 calc((100% - 66px)/3.35);min-width:0;scroll-snap-align:start}
+.featured-track .featured-photo{aspect-ratio:1/1;background:#f3f6fb}
+.featured-track .featured-photo img{object-fit:contain;padding:12px}
+.featured-track .featured-product-body{padding:22px;display:flex;flex-direction:column;flex:1}
+.featured-track h3{font-size:18px;line-height:1.45;margin:12px 0 20px}
+.featured-track .featured-action{margin-top:auto;font-size:13px}
+.featured-controls{display:flex;align-items:center;justify-content:space-between;gap:20px;margin-top:14px}
+.featured-controls>span{font-size:13px;color:#526278;font-variant-numeric:tabular-nums}
+.featured-controls>div{display:flex;gap:10px}
+.featured-controls button{width:46px;height:46px;padding:0;font-size:22px}
+.featured-track:focus-visible{outline:2px solid #165dff;outline-offset:5px;border-radius:14px}
+.home-main>#creaciones{grid-column:1/-1;width:100%;max-width:none;padding-inline:var(--page-gutter)}
+.featured-track .featured-product{flex-basis:calc((100% - 66px)/3.15)}
+.featured-autoplay svg{width:18px;height:18px;display:block;margin:auto}
+
+/* Catalogue: keep the complete object visible and make the details action clear. */
+#grid .photo{background:#f3f6fb;border-bottom-color:#e2e9f2}
+#grid .photo img:not(.product-watermark){object-fit:contain;padding:14px}
+#grid .card-body{padding:24px}
+#grid .card h2{font-size:20px;font-weight:800;line-height:1.35;margin:12px 0}
+#grid .tag,.featured-track .tag{font-size:12px;letter-spacing:0;text-transform:none;color:#2157bc}
+#grid .product-reference{font-size:11px;color:#617188}
+#grid .availability-badge{margin-bottom:4px}
+#grid .description{font-size:14px;color:#526278}
+#grid .product-details-link{display:flex;justify-content:center;align-items:center;width:100%;min-height:46px;margin:6px 0 18px;padding:10px 14px;border:1px solid #c4d7fa;border-radius:8px;background:#edf3ff;color:#1652c4;text-decoration:none;font-size:13px;font-weight:700}
+#grid .catalog-pricing{border-top:1px solid #e3eaf4;padding-top:18px}
+#catalogSection .toolbar{gap:20px;padding:24px}
+#catalogSection .toolbar label{font-weight:600}
+
+/* Administration: four real tools, one clear product-management entry point. */
+body[data-admin] #adminDashboard .dashboard-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:22px}
+body[data-admin] #adminDashboard .dashboard-grid>button{grid-column:auto}
+body[data-admin] #adminDashboard .dashboard-card{min-height:235px;padding:30px}
+body[data-admin] #goCatalog{background:#edf3ff;border-color:#c2d5f9}
+body[data-admin] #goCatalog .tile-title{color:#1649a1}
+body[data-admin] #adminDashboard .tile-title{font-size:23px;font-weight:800}
+body[data-admin] #adminDashboard .tile-copy{font-size:14px;max-width:46ch;line-height:1.8}
+body[data-admin] .workspace-heading{border-bottom:1px solid #e0e7f1;padding-bottom:28px;margin-bottom:30px}
+body[data-admin] .workspace-heading h1{font-weight:800}
+#viewTitle:focus{outline:none}
+.featured-track .featured-product:focus-visible{outline:2px solid #165dff;outline-offset:-3px}
+.product-management-table{border:1px solid #dce4ef;border-radius:12px;overflow:hidden}
+.product-management-table th{padding:16px;font-size:12px;text-transform:none;letter-spacing:0}
+.product-management-table td{padding:18px 16px;vertical-align:middle}
+.product-management-table tbody tr:nth-child(even){background:#f8fafd}
+.product-row-info{gap:16px}.product-row-info img{width:64px;height:64px;background:#f1f5fb;border-radius:9px}
+.product-row-info strong{font-size:14px;line-height:1.5}
+.product-row-actions{gap:7px}.product-row-actions button{min-height:40px;padding:8px 12px}
+.product-row-actions button:first-child{background:#edf3ff;border-color:#c4d7fa;color:#1652c4;font-weight:700}
+.product-pagination{padding-block:16px;border-top:1px solid #e0e7f1}
+@media(hover:hover) and (pointer:fine){#grid .product-details-link:hover,.product-row-actions button:first-child:hover{background:#dfeaff;color:#1649a1}.product-management-table tbody tr:hover{background:#edf3ff}}
+@media(max-width:1000px){.featured-track .featured-product{flex-basis:calc((100% - 44px)/2.25)}}
+@media(max-width:760px){
+ .featured-track{gap:16px}.featured-track .featured-product{flex-basis:88%}.featured-track .featured-photo{aspect-ratio:1/1}
+ .featured-track .featured-product-body{padding:20px}.featured-controls{margin-top:10px}
+ #grid .card-body{padding:22px}#catalogSection .toolbar{padding:20px;gap:16px}
+ body[data-admin] #adminDashboard .dashboard-grid{grid-template-columns:1fr;gap:16px}
+ body[data-admin] #adminDashboard .dashboard-card{min-height:220px;padding:26px}
+ .product-management-table{border:0;overflow:visible}
+ .product-management-table td{padding:9px 0}.product-row-actions button{min-height:44px}
+ .product-management-table tbody tr:nth-child(even){background:#f8fafd}
+}
 .browser-fallback{padding:22px;border:1px solid #bdcde6;border-radius:10px;background:#f3f6fc;color:#41516a}
 .browser-fallback a{color:#1652c4;text-underline-offset:4px}
 .missing-page{max-width:780px;margin:70px auto;text-align:center;padding-block:32px}

@@ -115,7 +115,9 @@ Se incluyen metadatos básicos, datos de organización y un sitemap con las dos 
 
 ## Muestras de productos y reseñas
 
-La portada muestra hasta cuatro productos del catálogo con nombre, foto HTTP/HTTPS y precio público válidos. La selección se actualiza con Firebase y enlaza a cada pieza del catálogo. Con el catálogo vacío se muestra un estado informativo y un enlace al Instagram del estudio; no se incluyen productos inventados ni productos del inventario anterior.
+La portada muestra hasta doce productos del catálogo con nombre, foto HTTP/HTTPS y precio público válidos. La selección se actualiza con Firebase y enlaza a cada pieza del catálogo. Con el catálogo vacío se muestra un estado informativo y un enlace al Instagram del estudio; no se incluyen productos inventados ni productos del inventario anterior.
+
+Las creaciones se recorren en un carrusel automático (`featured-carousel.js`), más ancho que el contenido principal. Avanza cada cinco segundos y cambia de sentido al llegar a un extremo. Dispone de pausa y solo avanza mientras está visible, sin foco de teclado ni puntero encima; una interacción táctil retrasa el siguiente avance. Con movimiento reducido funciona de forma manual. Permite desplazamiento táctil nativo, botones anterior/siguiente y teclado con flechas, Inicio y Fin. Los controles desaparecen cuando todas las piezas caben; se actualizan al cambiar los datos o el tamaño de pantalla. En móvil se muestra parte de la siguiente tarjeta para hacer visible el desplazamiento horizontal. Se respeta la preferencia de movimiento reducido.
 
 La sección de reseñas enlaza a la ficha de Google facilitada por el propietario. web-content.js admite hasta tres comentarios reales con author, text, rating (entero de 1 a 5) y url opcional de Google. Actualmente no hay comentarios copiados ni puntuación agregada. El contenido se incorpora manualmente y no se presenta como sincronización automática. No se utiliza Google Places, servicios de terceros ni APIs de pago.
 

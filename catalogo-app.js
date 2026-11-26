@@ -318,7 +318,7 @@
         if(!shopView&&!checkingShop&&p.estado!=='agotado'){const url=window.CATALOGO_PRODUCTS.wallapopUrl(p.wallapop);if(url){const link=el('a','Comprar en Wallapop ↗','wallapop-link');link.href=url;link.target='_blank';link.rel='noopener noreferrer';link.setAttribute('aria-label','Comprar '+p.nombre+' en Wallapop (abre otra pestaña)');pricing.append(link);}}
         card.append(photo,body); $('grid').append(card);
       });
-      status(items.length ? `${items.length} productos` : 'No hay productos para mostrar.');
+      status(items.length ? `${items.length} ${items.length===1?'producto':'productos'}` : 'No hay productos para mostrar.');
       if (!productHashHandled && location.hash?.startsWith('#producto-')) {
         try { const target = document.getElementById(decodeURIComponent(location.hash.slice(1))); if (target) { target.scrollIntoView({block:'center'}); target.focus?.({preventScroll:true}); productHashHandled = true; } } catch {}
       }
@@ -337,8 +337,9 @@
     function renderAdmin() {
       if (!admin) return;
       if(pricingDraft)renderPriceTargets();
-      $('dashboardProducts').textContent = Object.keys(publicProducts).length + ' productos';
-      $('dashboardShops').textContent = Object.keys(shops).length + ' tiendas';
+      const productCount=Object.keys(publicProducts).length,shopCount=Object.keys(shops).length;
+      $('dashboardProducts').textContent = productCount + (productCount===1?' producto':' productos');
+      $('dashboardShops').textContent = shopCount + (shopCount===1?' tienda':' tiendas');
       $('adminProducts').replaceChildren();
       const normalize = value => String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
       const selected=$('adminProductCategory').value, query=normalize($('adminProductSearch').value).trim();

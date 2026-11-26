@@ -27,6 +27,7 @@ function fixture(role) {
     const auth={currentUser:user};
     const profile={nombre:'Tienda de prueba',email:'shop@example.test',rol:'tienda',activo:true};
     const data={dev3dCatalogoPublico:{demo:{nombre:'Pieza de prueba visual',categoria:'Impresión 3D',precio:12,descripcion:'Producto simulado para verificar la interfaz.',imagen:'/logo-light.svg',disponibilidad:'disponible'}},dev3dCatalogoMayorista:{demo:{precio:8,minimo:5}},dev3dTiendas:{'preview-shop':profile}};
+    if(document.body.dataset.home==='true')data.dev3dCatalogoPublico=Object.fromEntries(Array.from({length:12},(_,i)=>['piece-'+i,{nombre:'Pieza de prueba '+String(i+1).padStart(2,'0'),categoria:'Impresión 3D',precio:12,imagen:location.origin+'/logo-light.svg'}]));
     window.CATALOGO_CONFIG={firebaseConfig:{databaseURL:'https://preview.invalid'},ADMIN_EMAILS:['admin@example.test']};
     const database={getDatabase:()=>({}),ref:(_,n)=>n,query:n=>n,orderByChild:()=>{},equalTo:()=>{},onValue:(n,cb)=>{const value=n.split('/').reduce((o,k)=>o?.[k],data);queueMicrotask(()=>cb({val:()=>value||null}));return()=>{};},get:async()=>({val:()=>null}),serverTimestamp:()=>0,set:async()=>{throw Error('Writes blocked in browser tests')},update:async()=>{throw Error('Writes blocked in browser tests')},push:()=>({key:'preview'})};
     window.CATALOGO_BOOT={loadFirebase:async()=>[{initializeApp:()=>({})},database,{getAuth:()=>auth,onAuthStateChanged:(_,fn)=>{setTimeout(()=>fn(user),0);return()=>{}},signOut:async()=>{},EmailAuthProvider:{credential:()=>({})}},{getStorage:()=>({})}]};
@@ -111,6 +112,31 @@ async function checkLayout(page, label) {
           assert.equal(await canvas.evaluate(c=>getComputedStyle(c).animationPlayState),'paused');
           await page.emulateMedia({reducedMotion:'reduce'});await page.evaluate(()=>scrollTo(0,0));
           await page.screenshot({path:path.join(output,`home-${width}.png`)});
+          await page.locator('#featuredCarousel').scrollIntoViewIfNeeded();
+          assert.equal(await page.locator('#featuredProducts .featured-product').count(),12);
+          await page.locator('#featuredNext').click();
+          await page.waitForFunction(()=>document.getElementById('featuredProducts').scrollLeft>0);
+          const track=page.locator('#featuredProducts');await track.focus();await page.keyboard.press('End');
+          await page.waitForFunction(()=>document.getElementById('featuredNext').disabled);
+          assert.equal(await page.locator('#featuredPrevious').isEnabled(),true);
+          await page.keyboard.press('Home');await page.waitForFunction(()=>document.getElementById('featuredPrevious').disabled);
+          await page.keyboard.press('ArrowRight');await page.waitForFunction(()=>document.getElementById('featuredProducts').scrollLeft>0);
+          await page.locator('#creaciones').screenshot({path:path.join(output,`carousel-${width}.png`)});
+          if(width===390){
+            await page.emulateMedia({reducedMotion:'no-preference'});
+            await page.mouse.move(0,0);await track.evaluate(e=>e.blur());
+            await page.waitForTimeout(10500);
+            const beforeAuto=await track.evaluate(e=>e.scrollLeft);
+            await page.waitForFunction(previous=>Math.abs(document.getElementById('featuredProducts').scrollLeft-previous)>20,beforeAuto,{timeout:6500});
+            await page.locator('#featuredAutoplay').click();
+            assert.equal(await page.locator('#featuredAutoplay').getAttribute('aria-pressed'),'true');
+            await page.mouse.move(0,0);await page.locator('#featuredAutoplay').evaluate(e=>e.blur());
+            await page.waitForTimeout(700);const stoppedAt=await track.evaluate(e=>e.scrollLeft);
+            await page.waitForTimeout(5200);assert.equal(await track.evaluate(e=>e.scrollLeft),stoppedAt);
+            await page.emulateMedia({reducedMotion:'reduce'});
+            await page.waitForFunction(()=>document.getElementById('featuredAutoplay').hidden);
+            assert.equal(await page.locator('#featuredAutoplay').isVisible(),false);
+          }
         }
         if(file==='catalogo.html') {
           await page.waitForSelector('.card');
@@ -132,6 +158,7 @@ async function checkLayout(page, label) {
       }
       role='admin';await page.goto(`${base}/admin.html`);await page.waitForSelector('#openCalculator:visible');
       await checkLayout(page,`${width} admin dashboard`);views++;
+      await page.screenshot({path:path.join(output,`admin-${width}.png`)});
       await page.locator('#goCatalog').click();await page.locator('#newProduct').click();
       assert.equal(await page.locator('#productDialog').evaluate(e=>e.open),true);
       await checkLayout(page,`${width} product editor`);views++;await page.locator('#closeProductDialog').click();
