@@ -17,7 +17,7 @@ const {prepare}=require('../calculadora/budgets.js');
   const field=(name,value)=>{const input=root.querySelector('[data-field="'+name+'"]');input.value=String(value);input.dispatchEvent(new window.Event('input',{bubbles:true}));};
   const action=(name)=>[...app.node('adminProducts').querySelectorAll('button')].find(b=>b.textContent===name);
   for(const [id,value] of Object.entries({pieceName:'Figura personalizada',quantity:3,printDays:1,printHours:2,printMinutes:7,printSeconds:4,operatorCount:2,laborHours:0,laborMinutes:23,laborSeconds:8,laborRate:12.5,printerPowerKw:.2,electricityPrice:.17,maintenancePercent:7,profitPercent:43,vatPercent:10,fixedPricing:'yes',wholesaleProfit:27,shopMargin:35,shopMinimum:5,targetPvp:0,referenceCost:10,costBuffer:12,saleChannel:'shop'}))set(id,value);
-  field('name','PLA especial');field('brand','Mi marca');field('weight',.25);field('price',24.2);field('factor',1.12);field('priceVat','gross');
+  field('name','PLA especial');field('brand','Mi marca');field('weight',.25);field('price',24.2);field('factor',12);field('priceVat','gross');
   get('purchaseVatMode').value='deduct';get('purchaseVatPercent').value='21';get('purchaseVatMode').dispatchEvent(new window.Event('change',{bubbles:true}));
   const aux=root.querySelector('.aux-item input');aux.value='2.3';aux.dispatchEvent(new window.Event('input',{bubbles:true}));
   get('inventoryButton').click();assert.equal(prompt.open,true);choose('saveProductBudgetCancel');await settle();

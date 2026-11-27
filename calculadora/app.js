@@ -349,7 +349,7 @@ function renderMaterialRows() {
           </label>
           <label class="field material-field-factor">
             <span>Factor de error</span>
-            <input data-field="factor" type="number" value="${material.factor}" min="1" step="0.01">
+            <div class="input-suffix"><input data-field="factor" type="number" value="${percentFromFactor(material.factor)}" min="0" step="0.01"><b>%</b></div>
           </label>
           <label class="field material-field-price">
             <span class="material-price-label">${materialAmounts(material).deduct?'Precio por kg':'Precio de compra por kg'}</span>
@@ -553,10 +553,22 @@ function switchMode(mode) {
   calculate();
 }
 
+function factorFromPercent(percent) {
+  return 1 + Math.max(0, safeNumber(percent)) / 100;
+}
+function percentFromFactor(factor) {
+  return Number((Math.max(0, safeNumber(factor, 1) - 1) * 100).toFixed(10));
+}
+function savedFieldValues() {
+  const values = Object.fromEntries(fieldIds.map(id => [id, document.getElementById(id).value]));
+  values.gcodeErrorFactor = String(factorFromPercent(values.gcodeErrorFactor));
+  return values;
+}
+
 function saveSettings() {
   if (!active) return;
   try {
-    const values = Object.fromEntries(fieldIds.map((id) => [id, document.getElementById(id).value]));
+    const values = savedFieldValues();
     localStorage.setItem(STORAGE_KEY, JSON.stringify({
       defaultsVersion: SETTINGS_DEFAULTS_VERSION,
       includeDepreciation: Boolean($("#includeDepreciation").checked),
@@ -578,7 +590,7 @@ function loadSettings(snapshot) {
     if (!saved?.values) return;
     setDepreciationEnabled(saved.includeDepreciation ?? (Number(saved.values.machineHourlyCost) > 0));
     fieldIds.forEach((id) => {
-      if (saved.values[id] !== undefined) document.getElementById(id).value = saved.values[id];
+      if (saved.values[id] !== undefined) document.getElementById(id).value = id === "gcodeErrorFactor" ? percentFromFactor(saved.values[id]) : saved.values[id];
     });
     if(String(saved.values.wholesaleProfit??'').trim()==='')$('#wholesaleProfit').value=defaults.wholesaleProfit;
     $('#wholesaleProfile').value=profitProfiles.normalize(saved.wholesaleProfile,$('#wholesaleProfit').value);
@@ -883,7 +895,7 @@ function syncGcodeMaterial(preserveTaxBasis=true) {
   const fallbackName = selected?.dataset.material || "Filamento G-code";
   const fallbackBrand = $("#gcodeBrand").value.trim();
   const fallbackPrice = Math.max(0, value("gcodeMaterialPrice"));
-  const factor = Math.max(1, value("gcodeErrorFactor"));
+  const factor = factorFromPercent(value("gcodeErrorFactor"));
   const breakdown = state.gcode.filaments?.filter((filament) => filament.grams > 0) || [];
 
   if (breakdown.length) {
@@ -1258,7 +1270,7 @@ function copySummary() {
     const displayedWeight = unit === "g" ? safeNumber(material.kg) * 1000 : safeNumber(material.kg);
     const colorDetail = normalizeHexColor(material.color);
     const amount=materialAmounts(material),priceDetail=`${euro.format(material.price)}/kg ${material.priceVat==='gross'?'con IVA de compra':'sin IVA de compra'} → ${euro.format(netPrice)}/kg usado`+(amount.removed?` (descontado ${decimal.format(amount.rate)} %)`:'');
-    return `  - ${material.name || "Material"} ${material.brand ? `(${material.brand})` : ""}${colorDetail ? ` [${colorDetail}]` : ""}: ${precise.format(displayedWeight)} ${unit} × ${material.factor} × ${priceDetail} = ${euro.format(total)}`;
+    return `  - ${material.name || "Material"} ${material.brand ? `(${material.brand})` : ""}${colorDetail ? ` [${colorDetail}]` : ""}: ${precise.format(displayedWeight)} ${unit} (+${precise.format(percentFromFactor(material.factor))} %) × ${priceDetail} = ${euro.format(total)}`;
   });
   const lines = [
     `PRESUPUESTO · ${name}`,
@@ -1360,7 +1372,9 @@ function handleMaterialInput(event) {
   if (!material) return;
   const field = input.dataset.field;
   if(input.tagName==='SELECT'&&material[field]===input.value)return;
-  if (field === "weight") {
+  if (field === "factor") {
+    material.factor = factorFromPercent(input.value);
+  } else if (field === "weight") {
     material.kg = safeNumber(input.value) * (material.unit === "g" ? 0.001 : 1);
   } else if (field === "unit") {
     material.unit = input.value === "g" ? "g" : "kg";
@@ -1498,7 +1512,7 @@ updateAuxCustomField();
 switchMode(state.mode);
 function captureCalculation(){
   if(!state.offer?.valid)throw Error('Revisa los datos de la tarifa antes de guardar el presupuesto.');
-  const values = Object.fromEntries(fieldIds.map(id=>[id,document.getElementById(id).value]));
+  const values = savedFieldValues();
   if (!$("#includeDepreciation").checked) values.machineHourlyCost = "0";
   return scope.DEV3D_BUDGETS.prepare({defaultsVersion:SETTINGS_DEFAULTS_VERSION,values,materials:state.materials,auxiliaryItems:state.auxiliaryItems,wholesaleProfile:profitProfiles.normalize($('#wholesaleProfile').value,$('#wholesaleProfit').value),materialTax:materialTaxConfig()});
 }

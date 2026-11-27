@@ -24,7 +24,7 @@ assert.equal(window.document.querySelectorAll('iframe').length,0);assert(get('ma
 assert.equal(get('wholesaleProfit').value,'20');assert.match(get('wholesaleProfitExample').textContent,/12,00/);assert.match(get('wholesaleProfitExample').textContent,/2,00/);
 assert.equal(get('wholesaleProfile').value,'profit20');assert.equal(get('wholesaleProfile').querySelectorAll('option').length,6);
 for(const [id,value] of Object.entries({quantity:1,printDays:0,printHours:0,printMinutes:0,printSeconds:0,operatorCount:0,printerPowerKw:0,maintenancePercent:0,profitPercent:30,vatPercent:21,fixedPricing:'no',wholesaleProfit:20,shopMargin:40,targetPvp:0,shopMinimum:10}))set(id,value);
-field('weight',.1);field('price',10);field('factor',1);field('priceVat','net');
+field('weight',.1);field('price',10);field('factor',0);field('priceVat','net');
 const aux=root.querySelector('.aux-item input');aux.value='0';aux.dispatchEvent(new window.Event('input',{bubbles:true}));
 assert.equal(external.value,'777');assert.equal(euroValue('realCost'),1);assert.equal(euroValue('recommendedPrice'),1.6);
 function includeMachine(enabled){get('includeDepreciation').checked=enabled;get('includeDepreciation').dispatchEvent(new window.Event('change',{bubbles:true}));}

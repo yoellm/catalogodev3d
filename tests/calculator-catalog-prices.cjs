@@ -11,7 +11,7 @@ const {appDOM}=require('./helpers/app-dom.cjs');
  function set(id,value){const input=get(id);input.value=String(value);input.dispatchEvent(new window.Event('input',{bubbles:true}));}
  function field(name,value){const input=root.querySelector('[data-field="'+name+'"]');input.value=String(value);input.dispatchEvent(new window.Event('input',{bubbles:true}));}
  for(const [id,value] of Object.entries({quantity:10,printDays:0,printHours:0,printMinutes:0,printSeconds:0,operatorCount:0,printerPowerKw:0,maintenancePercent:0,profitPercent:30,vatPercent:21,fixedPricing:'no',wholesaleProfit:20,shopMargin:40,targetPvp:123,pieceName:'Producto calculado'}))set(id,value);
- field('weight',1);field('price',10);field('factor',1);field('priceVat','net');const aux=root.querySelector('.aux-item input');aux.value='0';aux.dispatchEvent(new window.Event('input',{bubbles:true}));
+ field('weight',1);field('price',10);field('factor',0);field('priceVat','net');const aux=root.querySelector('.aux-item input');aux.value='0';aux.dispatchEvent(new window.Event('input',{bubbles:true}));
  for(const minimum of [5,20])for(const channel of ['shop','direct']){
   app.node('openCalculator').onclick();set('shopMinimum',minimum);set('saleChannel',channel);get('inventoryButton').click();get('saveProductBudgetNo').onclick();await new Promise(resolve=>setTimeout(resolve,0));
   const form=app.node('productForm');assert.equal(app.node('productDialog').open,true);assert.equal(Number(form.elements.precio.value),1.6);assert.equal(Number(form.elements.mayorista.value),1.5);assert.equal(Number(form.elements.minimo.value),minimum);assert.match(app.node('productMessage').textContent,/por 1 unidad/);
