@@ -27,9 +27,14 @@ for(const [id,value] of Object.entries({quantity:1,printDays:0,printHours:0,prin
 field('weight',.1);field('price',10);field('factor',1);field('priceVat','net');
 const aux=root.querySelector('.aux-item input');aux.value='0';aux.dispatchEvent(new window.Event('input',{bubbles:true}));
 assert.equal(external.value,'777');assert.equal(euroValue('realCost'),1);assert.equal(euroValue('recommendedPrice'),1.6);
+function includeMachine(enabled){get('includeDepreciation').checked=enabled;get('includeDepreciation').dispatchEvent(new window.Event('change',{bubbles:true}));}
+assert(get('depreciationFields').classList.contains('hidden'));
+includeMachine(true);
 set('printHours',2);set('machineHourlyCost',1.5);set('maintenancePercent',10);set('failedPrintPercent',10);
 // Reserva: (material 1 + máquina 3) × 10 % = 0,40.
 assert.equal(euroValue('realCost'),4.50);
+includeMachine(false);assert.equal(euroValue('realCost'),1.20);
+includeMachine(true);assert.equal(euroValue('realCost'),4.50);
 set('quantity',2);assert.equal(euroValue('realCost'),2.25);
 set('printerPowerKw',0.5);set('electricityPrice',1);
 set('operatorCount',1);set('laborHours',1);set('laborMinutes',0);set('laborSeconds',0);set('laborRate',10);

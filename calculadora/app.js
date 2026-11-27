@@ -425,7 +425,7 @@ function calculate() {
   const directCost = material + electricity + labor + auxiliaries;
   const maintenanceRate = Math.max(0, value("maintenancePercent")) / 100;
   const maintenance = directCost * maintenanceRate;
-  const depreciation = hours * Math.max(0, value("machineHourlyCost"));
+  const depreciation = $("#includeDepreciation").checked ? hours * Math.max(0, value("machineHourlyCost")) : 0;
   const productionCost = directCost + maintenance + depreciation;
   const reprintCost = material + electricity + depreciation;
   const failureReserve = reprintCost * Math.max(0, value("failedPrintPercent")) / 100;
@@ -559,6 +559,7 @@ function saveSettings() {
     const values = Object.fromEntries(fieldIds.map((id) => [id, document.getElementById(id).value]));
     localStorage.setItem(STORAGE_KEY, JSON.stringify({
       defaultsVersion: SETTINGS_DEFAULTS_VERSION,
+      includeDepreciation: Boolean($("#includeDepreciation").checked),
       values,
       materials: state.materials,
       auxiliaryItems: state.auxiliaryItems,
@@ -575,6 +576,7 @@ function loadSettings(snapshot) {
   try {
     const saved = snapshot || JSON.parse(localStorage.getItem(STORAGE_KEY));
     if (!saved?.values) return;
+    setDepreciationEnabled(saved.includeDepreciation ?? (Number(saved.values.machineHourlyCost) > 0));
     fieldIds.forEach((id) => {
       if (saved.values[id] !== undefined) document.getElementById(id).value = saved.values[id];
     });
@@ -1289,6 +1291,7 @@ function resetAll(options={}) {
   if (options.confirm!==false&&!window.confirm("¿Quieres reiniciar todos los valores de la calculadora?")) return;
   setProductContext(null);budgetView?.clearSelection();
   fieldIds.forEach((id) => { document.getElementById(id).value = defaults[id]; });
+  setDepreciationEnabled(false);
   $('#wholesaleProfile').value='profit20';
   $('#purchaseVatMode').value='auto';$('#purchaseVatPercent').value='21';
   state.materials = structuredClone(defaultMaterials);
@@ -1320,6 +1323,15 @@ function bindMirror(primaryId, mirrorId) {
     calculate();
   });
 }
+
+function setDepreciationEnabled(enabled) {
+  $("#includeDepreciation").checked = enabled;
+  $("#depreciationFields").classList.toggle("hidden", !enabled);
+}
+$("#includeDepreciation").addEventListener("change", () => {
+  setDepreciationEnabled($("#includeDepreciation").checked);
+  calculate();
+});
 
 fieldIds.forEach((id) => {
   document.getElementById(id).addEventListener("input", () => {
@@ -1486,7 +1498,9 @@ updateAuxCustomField();
 switchMode(state.mode);
 function captureCalculation(){
   if(!state.offer?.valid)throw Error('Revisa los datos de la tarifa antes de guardar el presupuesto.');
-  return scope.DEV3D_BUDGETS.prepare({defaultsVersion:SETTINGS_DEFAULTS_VERSION,values:Object.fromEntries(fieldIds.map(id=>[id,document.getElementById(id).value])),materials:state.materials,auxiliaryItems:state.auxiliaryItems,wholesaleProfile:profitProfiles.normalize($('#wholesaleProfile').value,$('#wholesaleProfit').value),materialTax:materialTaxConfig()});
+  const values = Object.fromEntries(fieldIds.map(id=>[id,document.getElementById(id).value]));
+  if (!$("#includeDepreciation").checked) values.machineHourlyCost = "0";
+  return scope.DEV3D_BUDGETS.prepare({defaultsVersion:SETTINGS_DEFAULTS_VERSION,values,materials:state.materials,auxiliaryItems:state.auxiliaryItems,wholesaleProfile:profitProfiles.normalize($('#wholesaleProfile').value,$('#wholesaleProfit').value),materialTax:materialTaxConfig()});
 }
 function setProductContext(product){
   linkedProduct=product;
