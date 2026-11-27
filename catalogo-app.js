@@ -168,7 +168,11 @@
     const url = window.CATALOGO_HOME.googleReviewUrl(reviews?.url);
     if (url) {
       $('googleReviews').hidden = false; $('googleReviewsLink').href = url;
-      (Array.isArray(reviews.items) ? reviews.items : []).forEach(review=>{
+      const summary = window.DEV3D_GOOGLE_SUMMARY;
+      const age = Date.now() - summary?.updatedAt;
+      const current = age >= 0 && age < 7 * 86400000;
+      const items = current && Array.isArray(summary.items) ? summary.items : reviews.items;
+      (Array.isArray(items) ? items : []).forEach(review=>{
         if (typeof review.author !== 'string' || typeof review.text !== 'string' || !review.author.trim() || !review.text.trim() || !Number.isInteger(review.rating) || review.rating<1 || review.rating>5) return;
         const card=el('figure',undefined,'google-review-card');
         const stars=el('p','★'.repeat(review.rating)+'☆'.repeat(5-review.rating),'review-stars'); stars.setAttribute('aria-label',review.rating+' de 5 estrellas');
@@ -178,9 +182,7 @@
       });
       window.DEV3D_REVIEWS?.mount();
       if(!$('googleReviewCards').children.length){$('reviewsTitle').textContent='Tu opinión nos ayuda a crecer.';$('reviewsIntro').textContent='¿Ya tienes una pieza de DEV3D Studio? Cuéntanos tu experiencia en Google.';$('googleReviewsLink').textContent='Visitar nuestra ficha de Google ↗';}
-      const summary = window.DEV3D_GOOGLE_SUMMARY;
-      const age = Date.now() - summary?.updatedAt;
-      if (age >= 0 && age < 7 * 86400000 && summary.totalReviewCount > 0) {
+      if (current && summary.totalReviewCount > 0) {
         const count = summary.totalReviewCount;
         const rating = summary.averageRating.toLocaleString('es-ES', { maximumFractionDigits: 1 });
         $('reviewsTitle').textContent = rating + ' de 5 en Google';
@@ -189,9 +191,14 @@
         const actions = document.querySelector('.home-actions');
         if (actions) {
           const link = el('a', '★ ' + rating + '/5 · Leer ' + count.toLocaleString('es-ES') + (count === 1 ? ' reseña' : ' reseñas') + ' en Google ↗', 'text-link');
-          link.href = url;
-          link.target = '_blank';
-          link.rel = 'noopener noreferrer';
+          if ($('googleReviewCards').children.length) {
+            link.href = '#googleReviews';
+            link.textContent = '★ ' + rating + '/5 · Ver opiniones';
+          } else {
+            link.href = url;
+            link.target = '_blank';
+            link.rel = 'noopener noreferrer';
+          }
           actions.after(link);
         }
       }

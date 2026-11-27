@@ -3,6 +3,10 @@ import { pathToFileURL } from 'node:url';
 
 class ReviewError extends Error {}
 
+// Solo se publica el comentario cuya reproducción ha autorizado la autora.
+const approvedReviewId = 'AbFvOqkV3nWP0n-xeEYu6nMOHAMgHdEgrTYUviAl0XGUbY7ObFz2dSe68oVa-1NDe4uRE8Q0M1PqjQ';
+const stars = { ONE: 1, TWO: 2, THREE: 3, FOUR: 4, FIVE: 5 };
+
 export async function readSummary(env, request = fetch) {
   const keys = ['GOOGLE_REVIEWS_URL', 'GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET', 'GOOGLE_REFRESH_TOKEN'];
   const missing = keys.filter(key => !env[key]?.trim());
@@ -39,7 +43,23 @@ export async function readSummary(env, request = fetch) {
       (totalReviewCount && !(Number.isFinite(averageRating) && averageRating >= 1 && averageRating <= 5))) {
     throw new ReviewError('Google ha devuelto una valoración inválida.');
   }
-  return { totalReviewCount, averageRating: totalReviewCount ? averageRating : null, updatedAt: Date.now() };
+  const items = [];
+  if (totalReviewCount) {
+    url.pathname += '/' + approvedReviewId;
+    url.search = new URLSearchParams({ fields: 'reviewer(displayName),comment,starRating' });
+    const result = await request(url, {
+      headers: { Authorization: 'Bearer ' + access_token }, redirect: 'error', signal: AbortSignal.timeout(15000)
+    });
+    if (result.ok) {
+      const review = await result.json();
+      if (review.comment?.trim() && stars[review.starRating]) {
+        items.push({ author: review.reviewer?.displayName || 'Usuario de Google', text: review.comment, rating: stars[review.starRating] });
+      }
+    } else if (result.status !== 404) {
+      console.warn('::warning title=Reseña de Google::No se pudo consultar el comentario autorizado (HTTP ' + result.status + ').');
+    }
+  }
+  return { totalReviewCount, averageRating: totalReviewCount ? averageRating : null, updatedAt: Date.now(), items };
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
